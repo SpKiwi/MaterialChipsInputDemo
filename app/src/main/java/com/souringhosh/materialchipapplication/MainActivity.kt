@@ -25,7 +25,7 @@ class MainActivity : AppCompatActivity() {
         }
         suggestionRecycler.apply {
             adapter = suggestionAdapter
-            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.INVALID_OFFSET, false)
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.VERTICAL, false)
         }
 
         /**
@@ -50,11 +50,12 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        /*
-        * Deleting chips on pressing backspace on keypad*/
-        textInputEditText.setOnKeyListener { _, _, event ->
-            if (event != null && event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL) {
-                if (textInputEditText.length() == 0 && chipGroup.childCount > 0) {
+        /**
+         * Deleting chips on pressing backspace on keypad
+         **/
+        textInputEditText.setOnKeyListener { view, _, event ->
+            if (event != null && event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL && (view as EditText).selectionStart == 0) {
+                if (chipGroup.childCount > 0) {
                     val chip = chipGroup.getChildAt(chipGroup.childCount - 1)
                     chipGroup.removeView(chip)
                 }
