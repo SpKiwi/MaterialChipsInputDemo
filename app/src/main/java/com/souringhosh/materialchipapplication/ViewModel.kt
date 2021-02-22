@@ -9,37 +9,34 @@ import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveD
 import io.reactivex.disposables.CompositeDisposable
 
 interface ViewModel {
-    val hashtagInput: LiveData<String>
     val hashtags: LiveData<List<Hashtag>>
-    val errorMessage: LiveData<String?>
+    val error: LiveData<HashtagFailureReason?>
     val suggestions: LiveData<List<Suggestion>>
     val isSuggestionsLoading: LiveData<Boolean>
 }
 
 interface ViewModelInteractions {
     fun selectActiveHashtag(position: Int)
-    fun selectHashtagInput()
     fun selectSuggestion(position: Int)
 
     fun deleteHashtag(position: Int)
     fun deleteFromHashtag(position: Int)
-    fun deleteFromInput()
-    fun editExistingHashtag(hashtagPosition: Int, text: String)
-    fun editHashtagInput(text: String)
+    fun editHashtag(hashtagPosition: Int, before: String, after: String)
+    /**
+     * Actions like Done/Enter/Delete
+     **/
+    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction)
 }
 
 class ViewModelImpl(
         private val suggestionInteractor: SuggestionInteractor
 ) : ViewModel, ViewModelInteractions {
 
-//    private val hashtagInputMutable: DefaultMutableLiveData<String> = DefaultMutableLiveData("#")
-//    override val hashtagInput: LiveData<String> get() = hashtagInputMutable
-
     private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(emptyList())
     override val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
-    private val errorMessageMutable: MutableLiveData<String?> = MutableLiveData()
-    override val errorMessage: LiveData<String?> get() = errorMessageMutable
+    private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
+    override val error: LiveData<HashtagFailureReason?> get() = errorMutable
 
     private val suggestionsMutable: DefaultMutableLiveData<List<Suggestion>> = DefaultMutableLiveData(emptyList())
     override val suggestions: LiveData<List<Suggestion>> get() = suggestionsMutable
@@ -73,7 +70,6 @@ class ViewModelImpl(
 
     private fun getHashtagStringList(): List<String> = mutableListOf<String?>().run {
         addAll(currentHashtags.map { it.text })
-        add(hashtagInput.value)
         filterNotNull()
     }
 
@@ -86,7 +82,11 @@ class ViewModelImpl(
 
                 val newHashtags = currentHashtags.toMutableList()
                         .mapIndexed { index, hashtag ->
-                            val newState = if (index == position) Hashtag.State.EDIT else Hashtag.State.READY
+                            val newState = when (index) {
+                                position -> Hashtag.State.EDIT
+                                currentHashtags.lastIndex -> Hashtag.State.LAST
+                                else -> Hashtag.State.READY
+                            }
                             Hashtag(hashtag.text, newState)
                         }
                 hashtagsMutable.postValue(newHashtags)
@@ -94,36 +94,23 @@ class ViewModelImpl(
         }
     }
 
-    override fun selectHashtagInput() {
-        synchronized(lock) {
-            currentHashtagPosition = currentHashtags.size
-            suggestionInteractor.getSuggestions(getHashtagStringList(), hashtagInputMutable.value)
-        }
-    }
-
     override fun selectSuggestion(position: Int) {
         synchronized(lock) {
-            val selectedSuggestionText = currentSuggestions[position].value
-            val newHashtags: List<Hashtag>
-            if (currentHashtagPosition == currentHashtags.size) {
-                newHashtags = currentHashtags
-                        .map { Hashtag(it.text, Hashtag.State.READY) }
-                        .toMutableList()
-                        .apply {
-                            add(Hashtag(selectedSuggestionText, Hashtag.State.READY))
+            val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
+            val newHashtags: MutableList<Hashtag> = currentHashtags
+                    .mapIndexed { index, hashtag ->
+                        val newText = if (index == currentHashtagPosition) selectedSuggestionText else hashtag.text
+                        Hashtag(newText, Hashtag.State.READY)
+                    }
+                    .toMutableList()
+                    .apply {
+                        if (currentHashtagPosition == currentHashtags.lastIndex) {
+                            add(Hashtag("#", Hashtag.State.LAST))
                         }
+                    }
 
-                hashtagsMutable.postValue(newHashtags)
-                hashtagInputMutable.postValue("#")
-            } else {
-                newHashtags = currentHashtags.mapIndexed { index, hashtag ->
-                    val newText = if (currentHashtagPosition == index) selectedSuggestionText else hashtag.text
-                    Hashtag(newText, Hashtag.State.READY)
-                }
-
-                hashtagsMutable.postValue(newHashtags)
-            }
-            suggestionInteractor.getSuggestions(getHashtagStringList(), hashtagInputMutable.value)
+            hashtagsMutable.postValue(newHashtags)
+            suggestionInteractor.getSuggestions(getHashtagStringList(), null)
         }
     }
 
@@ -140,7 +127,7 @@ class ViewModelImpl(
         }
     }
 
-    override fun deleteFromHashtag(position: Int) { // TODO SELECTION
+    override fun deleteFromHashtag(position: Int) { // TODO SELECTION (подразумевается STATE у хештега, пока без него)
         synchronized(lock) {
             if (currentHashtags.getOrNull(position - 1) == null) {
                 return
@@ -156,86 +143,86 @@ class ViewModelImpl(
         }
     }
 
-    override fun deleteFromInput() { // TODO SELECTION
+    override fun editHashtag(hashtagPosition: Int, before: String, after: String) {
         synchronized(lock) {
-            if (currentHashtags.isEmpty()) {
-                return
-            }
-
-            val newHashtags = currentHashtags
-                    .toMutableList()
-                    .apply { dropLast(1) }
-            currentHashtagPosition = newHashtags.size
+            currentHashtagPosition = hashtagPosition
+            val newHashtags: List<Hashtag>
+            val input = Input(before = before, after = after)
+            when (val validationResult = validateText(input)) {
+                is HashtagInputValidation.Success -> {
+                    val newHashtag = Hashtag(after, Hashtag.State.EDIT)
+                    newHashtags = currentHashtags
+                            .toMutableList()
+                            .apply {
+                                set(hashtagPosition, newHashtag)
+                            }
+                }
+                is HashtagInputValidation.HashtagFinished -> {
+                    val newHashtag = Hashtag(validationResult.correctedHashtag, Hashtag.State.READY)
+                    newHashtags = currentHashtags
+                            .toMutableList()
+                            .apply {
+                                set(hashtagPosition, newHashtag)
+                                add(Hashtag("#", Hashtag.State.LAST))
+                            }
+                }
+                is HashtagInputValidation.Failure -> {
+                    val newHashtag = Hashtag(validationResult.correctedHashtag, Hashtag.State.EDIT)
+                    newHashtags = currentHashtags
+                            .toMutableList()
+                            .apply {
+                                set(hashtagPosition, newHashtag)
+                            }
+                    errorMutable.postValue(validationResult.reason)
+                }
+            }.exhaustive
             hashtagsMutable.postValue(newHashtags)
         }
     }
 
-    override fun editExistingHashtag(hashtagPosition: Int, text: String) {
-//        currentHashtagPosition = position
-//        val currentText = currentHashtags[currentHashtagPosition].text
-//        // todo check possible deletion here удаляться таким образом может только текущий хэштен, чтобы упростить все
-//        when (val validationResult = validateText(text)) {
-//            is HashtagInputValidation.Success -> {
-//            }
-//            is HashtagInputValidation.HashtagFinished -> {
-//                /** TODO
-//                 *
-//                 **/
-//            }
-//            is HashtagInputValidation.Failure -> {
-//                /** TODO
-//                 * 1. Update fixed hashtag text (correctedHashtag)
-//                 * 2.
-//                 **/
-//            }
-//        }.exhaustive
-//        /** TODO
-//         * 1. run validateText function
-//         **/
+    private data class Input(
+            val before: String,
+            val after: String
+    ) {
+        val length: Int get() = after.length
+        fun isStartNewHashtag(): Boolean = after.length - before.length == 1 && hashtagEndChars.contains(after.last())
     }
 
-    override fun editHashtagInput(text: String) {
-//        synchronized(lock) {
-//            if (editPosition == 0) {
-//                TODO("Deletion")
-//            }
-//            currentHashtagPosition = currentHashtags.size
-//            if (hashtagInputMutable.value.length > text.length) {
-//                TODO("Deletion")
-//            }
-//            /**
-//             * check editExistingHashtag method
-//             **/
-//        }
-    }
-
-    private fun fixString(inputText: String): String = inputText.replace(13.toChar(), ' ') // todo check if it is needed
-
-    private fun validateText(previousText: String?, newText: String): HashtagInputValidation {
-        if (previousText == null) {
-            TODO("Current text was previously empty")
+    private fun validateText(input: Input): HashtagInputValidation {
+        if (input.isStartNewHashtag()) {
+            val fixedString = "#${allowedCharacters.replace(input.after, "")}"
+            return HashtagInputValidation.HashtagFinished(fixedString)
         }
 
-//        if (inputText.length == 1 && hashtagEndChars.contains(inputText[0])) { // todo check string input as well
-//            TODO()
-////            return HashtagInputValidation.HashtagFinished()
-//        }
-//
-//        if (!textValidator.matches(inputText)) {
-//            return HashtagInputValidation.Failure(
-//                    HashtagFailureReason.WRONG_SYMBOL,
-//                    currentText
-//            )
-//        }
-//
-//        if (currentText.length + inputText.length > MAX_HASHTAG_LENGTH) {
-//            return HashtagInputValidation.Failure(
-//                    HashtagFailureReason.MAX_SIZE_EXCEEDED,
-//                    (currentText + inputText).take(MAX_HASHTAG_LENGTH)
-//            )
-//        }
+        if (!allowedCharacters.matches(input.after)) {
+            return HashtagInputValidation.Failure(
+                    HashtagFailureReason.WRONG_SYMBOL,
+                    input.before
+            )
+        }
+
+        if (input.length > MAX_HASHTAG_LENGTH) {
+            return HashtagInputValidation.Failure(
+                    HashtagFailureReason.MAX_SIZE_EXCEEDED,
+                    input.after.take(MAX_HASHTAG_LENGTH)
+            )
+        }
 
         return HashtagInputValidation.Success
+    }
+
+    override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
+//        TODO 
+//        when (action) {
+//            HashtagKeyboardAction.DELETE -> {
+//
+//            }
+//            HashtagKeyboardAction.ENTER -> TODO()
+//        }.exhaustive
+    }
+
+    enum class HashtagKeyboardAction { // TODO check if it is neeeded
+        DELETE, ENTER
     }
 
     private sealed class HashtagInputValidation {
@@ -245,7 +232,7 @@ class ViewModelImpl(
         object Success : HashtagInputValidation()
 
         /**
-         * Space, done or hashtag symbol should convert text to READY hashtag
+         * Space, hashtag symbol should convert text to READY hashtag
          **/
         data class HashtagFinished(
                 val correctedHashtag: String
@@ -262,7 +249,7 @@ class ViewModelImpl(
 
     companion object {
         private const val MAX_HASHTAG_LENGTH = 50
-        private val textValidator: Regex = Regex("a-zA-Z0-9_")
+        private val allowedCharacters: Regex = Regex("a-zA-Z0-9_") // ^[a-zA-Z\\s]*$ // todo check regex
         private val hashtagEndChars: List<Char> = listOf(13.toChar(), ' ', '#')
     }
 }
