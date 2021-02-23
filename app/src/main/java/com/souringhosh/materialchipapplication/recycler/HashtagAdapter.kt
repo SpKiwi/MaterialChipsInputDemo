@@ -51,20 +51,24 @@ class HashtagAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+        val hashtag = hashtags[position]
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
         } else {
             val bundle = payloads[0] as Bundle
             bundle.keySet().forEach { key ->
                 when (key) {
-                    HASHTAG_NEW_STATE -> holder.bindState(hashtags[position].state)
+                    HASHTAG_NEW_STATE -> holder.bindState(hashtag.state)
                     HASHTAG_NEW_TEXT -> {
                         preventTextNotify {
-                            holder.bindText(hashtags[position].text)
+                            holder.bindText(hashtag.text)
                         }
                     }
                 }
             }
+        }
+        if (hashtag.shouldGainFocus.value) {
+            holder.hashtagInput.requestFocus()
         }
     }
 

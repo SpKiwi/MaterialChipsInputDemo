@@ -181,7 +181,7 @@ class ViewModelImpl(
                             .toMutableList()
                             .apply {
                                 set(hashtagPosition, newHashtag)
-                                add(Hashtag(generateId(), "#", Hashtag.State.LAST))
+                                add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
                             }
                 }
                 is HashtagInputValidation.Failure -> {
@@ -327,7 +327,8 @@ data class Hashtag(
         override val id: Long,
         val text: String,
         val state: State,
-        val shouldCorrectSpelling: SingleEventFlag = SingleEventFlag()
+        val shouldCorrectSpelling: SingleEventFlag = SingleEventFlag(),
+        val shouldGainFocus: SingleEventFlag = SingleEventFlag()
 ) : ListItem {
 
     enum class State {
