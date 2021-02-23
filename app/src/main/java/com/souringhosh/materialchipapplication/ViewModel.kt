@@ -16,6 +16,7 @@ interface ViewModel {
     val isSuggestionsLoading: LiveData<Boolean>
 }
 
+/* TODO LET THE VIEWS MANAGE THEIR STATE ON THEIR OWN. KEEP CURRENT HASHTAGS LOCALLY AND DO NOT PUSH THEM INTO LIVEDATA EACH TIME */
 interface ViewModelInteractions {
     fun selectActiveHashtag(position: Int)
     fun selectSuggestion(position: Int)
@@ -33,7 +34,7 @@ class ViewModelImpl(
         private val suggestionInteractor: SuggestionInteractor
 ) : ViewModel, ViewModelInteractions {
 
-    private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(emptyList())
+    private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(listOf(Hashtag("", Hashtag.State.LAST)))
     override val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
     private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
@@ -67,6 +68,8 @@ class ViewModelImpl(
                             }
                         }
         )
+
+        suggestionInteractor.getSuggestions(getHashtagStringList(), "")
     }
 
     private fun getHashtagStringList(): List<String> = mutableListOf<String?>().run {

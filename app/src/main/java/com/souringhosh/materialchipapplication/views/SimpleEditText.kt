@@ -6,10 +6,12 @@ import android.util.AttributeSet
 import androidx.appcompat.widget.AppCompatEditText
 import java.util.*
 
-class SimpleEditText @JvmOverloads constructor(
-        context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : AppCompatEditText(context, attrs, defStyleAttr) {
+class SimpleEditText : AppCompatEditText {
     private var listeners: ArrayList<TextWatcher>? = null
+
+    constructor(ctx: Context?) : super(ctx) {}
+    constructor(ctx: Context?, attrs: AttributeSet?) : super(ctx, attrs) {}
+    constructor(ctx: Context?, attrs: AttributeSet?, defStyle: Int) : super(ctx, attrs, defStyle) {}
 
     override fun addTextChangedListener(watcher: TextWatcher) {
         if (listeners == null) {
@@ -38,5 +40,4 @@ class SimpleEditText @JvmOverloads constructor(
             listeners = null
         }
     }
-
 }

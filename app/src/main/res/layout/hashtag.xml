@@ -3,12 +3,14 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:padding="16dp">
 
     <com.souringhosh.materialchipapplication.views.SimpleEditText
         android:id="@+id/hashtag_text_edit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:hint="#Add new hashtag"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="#music" />

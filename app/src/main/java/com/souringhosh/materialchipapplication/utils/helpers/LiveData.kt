@@ -7,7 +7,7 @@ class DefaultLiveData<T>(
         defaultValue: T
 ) : LiveData<T>() {
     init {
-        postValue(defaultValue)
+        value = defaultValue
     }
 
     override fun getValue(): T {
@@ -19,7 +19,7 @@ class DefaultMutableLiveData<T>(
         defaultValue: T
 ) : MutableLiveData<T>() {
     init {
-        postValue(defaultValue)
+        value = defaultValue
     }
 
     override fun getValue(): T {
