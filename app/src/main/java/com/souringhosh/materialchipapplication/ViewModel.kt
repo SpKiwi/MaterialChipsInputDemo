@@ -25,6 +25,7 @@ interface ViewModelInteractions {
     fun deleteHashtag(position: Int)
     fun deleteFromHashtag(position: Int)
     fun editHashtag(hashtagPosition: Int, before: String, after: String)
+
     /**
      * Actions like Done/Enter/Delete
      **/
@@ -189,7 +190,6 @@ class ViewModelImpl(
             val before: String,
             val after: String
     ) {
-        val length: Int get() = after.length
         fun isStartNewHashtag(): Boolean = after.length - before.length == 1 && hashtagEndChars.contains(after.last())
         fun isSingleHashtagSymbol(): Boolean = after.length == 1 && after[0] == ' '
     }
@@ -199,13 +199,21 @@ class ViewModelImpl(
             return HashtagInputValidation.Success
         }
 
+        val formattedInput = getCleanHashtag(input.after)
+        if (formattedInput.isBlank()) {
+            return HashtagInputValidation.Success
+        }
+
         if (input.isStartNewHashtag()) {
-            val fixedString = StringBuilder()
+            val fixedStringBuilder = StringBuilder()
             input.after.forEachIndexed { index, char ->
                 if (isCharValid(index, char))
-                    fixedString.append(char)
+                    fixedStringBuilder.append(char)
             }
-            return HashtagInputValidation.HashtagFinished(fixedString.toString())
+            val fixedString = fixedStringBuilder.toString()
+            if (fixedString.length > 1) {
+                return HashtagInputValidation.HashtagFinished(fixedString)
+            }
         }
 
         input.after.forEachIndexed { index, char ->
@@ -217,7 +225,7 @@ class ViewModelImpl(
             }
         }
 
-        if (input.length > MAX_HASHTAG_LENGTH) {
+        if (formattedInput.length > MAX_HASHTAG_LENGTH) {
             return HashtagInputValidation.Failure(
                     HashtagFailureReason.MAX_SIZE_EXCEEDED,
                     input.after.take(MAX_HASHTAG_LENGTH)
@@ -227,14 +235,24 @@ class ViewModelImpl(
         return HashtagInputValidation.Success
     }
 
+    private val charValidation: (Char) -> Boolean = { it.isLetterOrDigit() || it == '_' }
     private fun isCharValid(index: Int, char: Char): Boolean {
-        val validation: (Char) -> Boolean = { it.isLetterOrDigit() || it == '_' }
         return if (index == 0) {
-            validation(char) || char == '#'
+            charValidation(char) || char == '#'
         } else {
-            validation(char)
+            charValidation(char)
         }
     }
+
+    private fun getCleanHashtag(hashtagText: String): String {
+        return if (hashtagText.startsWith('#')) {
+            hashtagText.replaceFirst("#", "", true)
+        } else {
+            hashtagText
+        }
+    }
+
+    private fun getCleanHashtagLength(hashtagText: String): Int = hashtagText.count(charValidation)
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
 //        TODO
@@ -246,7 +264,7 @@ class ViewModelImpl(
 //        }.exhaustive
     }
 
-    enum class HashtagKeyboardAction { // TODO check if it is neeeded
+    enum class HashtagKeyboardAction { // TODO check if it is needed
         DELETE, ENTER
     }
 
@@ -273,7 +291,11 @@ class ViewModelImpl(
     }
 
     companion object {
+        /**
+         * Hashtag length is counted without the '#' symbol
+         **/
         private const val MAX_HASHTAG_LENGTH = 50
+        private const val MIN_HASHTAG_LENGTH = 1
         private val hashtagEndChars: List<Char> = listOf(13.toChar(), ' ', '#')
     }
 }
