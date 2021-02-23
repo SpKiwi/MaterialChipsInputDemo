@@ -194,11 +194,15 @@ class ViewModelImpl(
 
     private fun validateText(input: Input): HashtagInputValidation {
         if (input.isStartNewHashtag()) {
-            val fixedString = "#${allowedCharacters.replace(input.after, "")}"
-            return HashtagInputValidation.HashtagFinished(fixedString)
+            val fixedString = StringBuilder()
+            input.after.forEach {
+                if (isCharValid(it))
+                    fixedString.append(it)
+            }
+            return HashtagInputValidation.HashtagFinished(fixedString.toString())
         }
 
-        if (!allowedCharacters.matches(input.after)) {
+        if (!input.after.all(::isCharValid)) {
             return HashtagInputValidation.Failure(
                     HashtagFailureReason.WRONG_SYMBOL,
                     input.before
@@ -214,6 +218,8 @@ class ViewModelImpl(
 
         return HashtagInputValidation.Success
     }
+
+    private fun isCharValid(char: Char): Boolean = char.isLetterOrDigit() || char == '_'
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
 //        TODO
@@ -253,7 +259,6 @@ class ViewModelImpl(
 
     companion object {
         private const val MAX_HASHTAG_LENGTH = 50
-        private val allowedCharacters: Regex = Regex("a-zA-Z0-9_") // ^[a-zA-Z\\s]*$ // todo check regex
         private val hashtagEndChars: List<Char> = listOf(13.toChar(), ' ', '#')
     }
 }
