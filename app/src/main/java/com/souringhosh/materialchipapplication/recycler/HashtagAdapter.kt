@@ -151,8 +151,21 @@ class HashtagAdapter(
         }
 
         fun bindText(text: String) {
+            val previousCursorPosition: Int? = if (hashtagInput.isFocused) {
+                hashtagInput.selectionStart
+            } else {
+                null
+            }
+
             if (hashtagInput.text.toString() != text) {
                 hashtagInput.setText(text)
+                previousCursorPosition?.let {
+                    if (it > text.length) {
+                        hashtagInput.setSelection(text.length)
+                    } else if (it - POSITION_OFFSET >= 0) {
+                        hashtagInput.setSelection(it - POSITION_OFFSET)
+                    }
+                }
             }
         }
 
@@ -174,6 +187,10 @@ class HashtagAdapter(
                     TODO()
                 }
             }.exhaustive
+        }
+
+        companion object {
+            private const val POSITION_OFFSET = 1 // todo consider case of larger offset (for example copy/paste)
         }
     }
 
