@@ -8,6 +8,7 @@ import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveData
 import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import io.reactivex.disposables.CompositeDisposable
+import java.util.concurrent.atomic.AtomicLong
 
 interface ViewModel {
     val hashtags: LiveData<List<Hashtag>>
@@ -36,7 +37,12 @@ class ViewModelImpl(
         private val suggestionInteractor: SuggestionInteractor
 ) : ViewModel, ViewModelInteractions {
 
-    private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(listOf(Hashtag("", Hashtag.State.LAST)))
+    private val lastHashtagId: AtomicLong = AtomicLong(0)
+    private fun generateId(): Long {
+        return lastHashtagId.getAndIncrement()
+    }
+
+    private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(listOf(Hashtag(generateId(), "", Hashtag.State.LAST)))
     override val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
     private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
@@ -93,7 +99,7 @@ class ViewModelImpl(
                                 currentHashtags.lastIndex -> Hashtag.State.LAST
                                 else -> Hashtag.State.READY
                             }
-                            Hashtag(hashtag.text, newState)
+                            hashtag.copy(text = hashtag.text, state = newState)
                         }
                 hashtagsMutable.postValue(newHashtags)
             }
@@ -106,12 +112,12 @@ class ViewModelImpl(
             val newHashtags: MutableList<Hashtag> = currentHashtags
                     .mapIndexed { index, hashtag ->
                         val newText = if (index == currentHashtagPosition) selectedSuggestionText else hashtag.text
-                        Hashtag(newText, Hashtag.State.READY)
+                        hashtag.copy(text = newText, state = Hashtag.State.READY)
                     }
                     .toMutableList()
                     .apply {
                         if (currentHashtagPosition == currentHashtags.lastIndex) {
-                            add(Hashtag("#", Hashtag.State.LAST))
+                            add(Hashtag(generateId(), "#", Hashtag.State.LAST))
                         }
                     }
 
@@ -156,7 +162,7 @@ class ViewModelImpl(
             val input = Input(before = before, after = after)
             when (val validationResult = validateText(input)) {
                 is HashtagInputValidation.Success -> {
-                    val newHashtag = Hashtag(after, Hashtag.State.EDIT)
+                    val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = Hashtag.State.EDIT)
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
@@ -164,16 +170,16 @@ class ViewModelImpl(
                             }
                 }
                 is HashtagInputValidation.HashtagFinished -> {
-                    val newHashtag = Hashtag(validationResult.correctedHashtag, Hashtag.State.READY)
+                    val newHashtag = currentHashtags[hashtagPosition].copy(text = validationResult.correctedHashtag, state = Hashtag.State.READY)
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
                                 set(hashtagPosition, newHashtag)
-                                add(Hashtag("#", Hashtag.State.LAST))
+                                add(Hashtag(generateId(), "#", Hashtag.State.LAST))
                             }
                 }
                 is HashtagInputValidation.Failure -> {
-                    val newHashtag = Hashtag(validationResult.correctedHashtag, Hashtag.State.EDIT)
+                    val newHashtag = currentHashtags[hashtagPosition].copy(text = validationResult.correctedHashtag, state = Hashtag.State.EDIT)
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
@@ -307,10 +313,10 @@ enum class HashtagFailureReason {
 }
 
 data class Hashtag(
+        override val id: Long,
         val text: String,
         val state: State
 ) : ListItem {
-    override val id: Int = 1 // TODO fix it and move it to the constructor, so that diff util could work as intended
 
     enum class State {
         /**

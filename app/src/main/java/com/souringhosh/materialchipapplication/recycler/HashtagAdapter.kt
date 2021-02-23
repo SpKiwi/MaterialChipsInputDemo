@@ -31,7 +31,9 @@ class HashtagAdapter(
             val diffResult: DiffUtil.DiffResult = DiffUtil.calculateDiff(HashtagDiffCallback(field, value))
             field = value
 
-            diffResult.dispatchUpdatesTo(this)
+            preventTextNotify {
+                diffResult.dispatchUpdatesTo(this)
+            }
         }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -43,7 +45,9 @@ class HashtagAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val hashtag = hashtags[position]
-        holder.bind(hashtag)
+        preventTextNotify {
+            holder.bind(hashtag)
+        }
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
