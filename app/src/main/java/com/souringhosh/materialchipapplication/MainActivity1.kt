@@ -1,10 +1,13 @@
 package com.souringhosh.materialchipapplication
 
+import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.recycler.HashtagAdapter
 import com.souringhosh.materialchipapplication.recycler.SuggestionAdapter
 import com.souringhosh.materialchipapplication.repository.MockSuggestionRepository
@@ -45,11 +48,24 @@ class MainActivity1 : AppCompatActivity() {
         hashtagRecycler.apply {
             adapter = hashtagAdapter
             layoutManager = LinearLayoutManager(this@MainActivity1, LinearLayoutManager.HORIZONTAL, false)
+            addOnScrollListener(object : RecyclerView.OnScrollListener() { //
+                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                    currentFocus?.let {
+                        (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0)
+                    }
+                }
+            })
         }
 
         viewModel.hashtags.observe(this, Observer {
+            val previousSize = hashtagAdapter.itemCount
+            val newSize = it.size
             hashtagAdapter.hashtags = it
+            if (previousSize < newSize) {
+                hashtagRecycler.layoutManager?.scrollToPosition(it.lastIndex)
+            }
         })
+
         viewModel.suggestions.observe(this, Observer {
             suggestionAdapter.suggestions = it
         })
@@ -58,7 +74,7 @@ class MainActivity1 : AppCompatActivity() {
                 hashtagError.visibility = View.INVISIBLE
             } else {
                 hashtagError.visibility = View.VISIBLE
-                // TODO change text message
+                hashtagError.text = it.name
             }
         })
     }

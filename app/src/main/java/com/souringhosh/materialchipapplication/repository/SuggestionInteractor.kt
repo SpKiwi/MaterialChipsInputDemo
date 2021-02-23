@@ -8,7 +8,7 @@ class SuggestionInteractor(
 ) {
     private val suggestionSubject: PublishSubject<Unit> = PublishSubject.create()
     private val loadingSubject: PublishSubject<State> = PublishSubject.create()
-    private var filter: List<String> = emptyList()
+    private var currentHashtags: List<String> = emptyList()
 
     fun observeSuggestions(): Observable<State> {
         val some: Observable<State> = suggestionSubject.switchMap {
@@ -19,7 +19,7 @@ class SuggestionInteractor(
                 .map { suggestions ->
                     State.Loaded(
                             suggestions.filter { suggestion ->
-                                filter.contains(suggestion.value)
+                                !currentHashtags.contains(suggestion.value)
                             }
                     )
                 }
@@ -31,8 +31,8 @@ class SuggestionInteractor(
     }
 
     @Synchronized
-    fun getSuggestions(filter: List<String>, search: String?) {
-        this.filter = filter
+    fun getSuggestions(currentHashtags: List<String>, search: String?) {
+        this.currentHashtags = currentHashtags
         loadingSubject.onNext(State.Loading)
         suggestionSubject.onNext(Unit)
     }

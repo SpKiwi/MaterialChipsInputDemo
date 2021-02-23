@@ -18,7 +18,6 @@ interface ViewModel {
     val isSuggestionsLoading: LiveData<Boolean>
 }
 
-/* TODO LET THE VIEWS MANAGE THEIR STATE ON THEIR OWN. KEEP CURRENT HASHTAGS LOCALLY AND DO NOT PUSH THEM INTO LIVEDATA EACH TIME */
 interface ViewModelInteractions {
     fun selectActiveHashtag(position: Int)
     fun selectSuggestion(position: Int)
@@ -77,10 +76,15 @@ class ViewModelImpl(
                         }
         )
 
-        suggestionInteractor.getSuggestions(getHashtagStringList(), "")
+        suggestionInteractor.getSuggestions(emptyList(), "")
     }
 
     private fun getHashtagStringList(): List<String> = mutableListOf<String?>().run {
+        addAll(currentHashtags.map { it.text })
+        filterNotNull()
+    }
+
+    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = mutableListOf<String?>().run {
         addAll(currentHashtags.map { it.text })
         filterNotNull()
     }
@@ -122,8 +126,8 @@ class ViewModelImpl(
                         }
                     }
 
+            suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtags[currentHashtagPosition].text)
             hashtagsMutable.postValue(newHashtags)
-            suggestionInteractor.getSuggestions(getHashtagStringList(), null)
         }
     }
 
@@ -170,6 +174,7 @@ class ViewModelImpl(
                                 .apply {
                                     removeAt(hashtagPosition)
                                 }
+                        suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text)
                     } else {
                         val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
                         val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
@@ -178,6 +183,7 @@ class ViewModelImpl(
                                 .apply {
                                     set(hashtagPosition, newHashtag)
                                 }
+                        suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
                     }
                 }
                 is HashtagInputValidation.HashtagFinished -> {
@@ -193,6 +199,7 @@ class ViewModelImpl(
                                 set(hashtagPosition, newHashtag)
                                 add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
                             }
+                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null)
                 }
                 is HashtagInputValidation.Failure -> {
                     val correctedHashtag = validationResult.correctedHashtag
