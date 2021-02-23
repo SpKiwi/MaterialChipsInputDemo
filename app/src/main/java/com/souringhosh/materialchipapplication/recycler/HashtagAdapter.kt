@@ -3,14 +3,14 @@ package com.souringhosh.materialchipapplication.recycler
 import android.graphics.Color
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.Hashtag
-import com.souringhosh.materialchipapplication.HashtagTextWatcher
+import com.souringhosh.materialchipapplication.KeyCallbacks
 import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
@@ -20,7 +20,8 @@ import com.souringhosh.materialchipapplication.views.SimpleEditText
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,
         private val onHashtagSelected: (Int) -> Unit,
-        private val hashtagTextWatcher: HashtagTextWatcher
+        private val editHashtag: (Int, String, String) -> Unit,
+        private val keyCallbacks: KeyCallbacks
 ) : RecyclerView.Adapter<HashtagAdapter.ViewHolder>() {
 
     var hashtags: List<Hashtag> = emptyList()
@@ -30,18 +31,6 @@ class HashtagAdapter(
 
             diffResult.dispatchUpdatesTo(this)
         }
-
-    private val textWatcher: TextWatcher = object : TextWatcher {
-        override fun afterTextChanged(s: Editable?) {  }
-
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
-            TODO()
-        }
-
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-            TODO("Not yet implemented")
-        }
-    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
             ViewHolder(
@@ -73,21 +62,52 @@ class HashtagAdapter(
             }.exhaustive
         }
     }
+    /* Position */
+    private val beforeTexts: MutableMap<Int, String> = mutableMapOf()
 
     override fun onViewAttachedToWindow(holder: ViewHolder) {
         super.onViewAttachedToWindow(holder)
         holder.apply {
-            itemView.setOnClickListener {
-                safeAdapterPosition?.let {
-                    val hashtag = hashtags[it]
-                    if (hashtag.state != Hashtag.State.EDIT) {
-                        onHashtagSelected(adapterPosition)
+            /* Selection */
+            itemView.setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) {
+                    safeAdapterPosition?.let {
+                        onHashtagSelected(it)
                     }
                 }
             }
-            hashtagInput.addTextChangedListener(textWatcher)
+            /* Delete */
             hashtagDelete.setOnClickListener {
                 safeAdapterPosition?.let { onHashtagDeleteClick(it) }
+            }
+            /* Text input */
+            hashtagInput.addTextChangedListener(object : TextWatcher {
+                override fun afterTextChanged(s: Editable?) {}
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                    safeAdapterPosition?.let {
+                        val beforeText = s?.toString() ?: ""
+                        beforeTexts[it] = beforeText
+                    }
+                }
+
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    safeAdapterPosition?.let {
+                        val beforeText = beforeTexts[it] ?: ""
+                        val afterText = s?.toString() ?: ""
+                        editHashtag(it, beforeText, afterText)
+                    }
+                }
+            })
+            /* Keyboard */
+            hashtagInput.setOnKeyListener { _, _, event ->
+                if (event != null && event.action == KeyEvent.ACTION_DOWN) {
+                    if (event.keyCode == KeyEvent.KEYCODE_DEL && hashtagInput.selectionStart == 0) {
+                        safeAdapterPosition?.let { keyCallbacks.onDeletePressed(it) }
+                    } else if (event.keyCode == KeyEvent.KEYCODE_ENTER) {
+                        safeAdapterPosition?.let { keyCallbacks.onFinishInputPresses(it) }
+                    }
+                }
+                false
             }
         }
     }
@@ -95,9 +115,10 @@ class HashtagAdapter(
     override fun onViewDetachedFromWindow(holder: ViewHolder) {
         super.onViewDetachedFromWindow(holder)
         holder.apply {
-            itemView.setOnClickListener(null)
+            itemView.onFocusChangeListener = null
             hashtagDelete.setOnClickListener(null)
-            hashtagInput.removeTextChangedListener(textWatcher)
+            hashtagInput.clearTextChangedListeners()
+            hashtagInput.setOnKeyListener(null)
         }
     }
 

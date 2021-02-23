@@ -1,8 +1,6 @@
 package com.souringhosh.materialchipapplication
 
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,23 +13,13 @@ import kotlinx.android.synthetic.main.activity_main1.*
 class MainActivity1 : AppCompatActivity() {
 
     private val hashtagAdapter: HashtagAdapter = HashtagAdapter(
-            onHashtagDeleteClick = {
-                viewModel.deleteHashtag(it)
-            },
-            onHashtagSelected = {
-                viewModel.selectActiveHashtag(it)
-            },
-            hashtagTextWatcher = object : HashtagTextWatcher {
-                private val beforeTexts: MutableMap<Int, String> = mutableMapOf()
-                override fun beforeTextChanged(position: Int, s: CharSequence?, start: Int, count: Int, after: Int) {
-                    val beforeText = s?.toString() ?: ""
-                    beforeTexts[position] = beforeText
-                }
-
-                override fun onTextChanged(position: Int, s: CharSequence?, start: Int, before: Int, count: Int) {
-                    val beforeText = beforeTexts[position] ?: ""
-                    val afterText = s?.toString() ?: ""
-                    viewModel.editHashtag(position, beforeText, afterText)
+            onHashtagDeleteClick = { viewModel.deleteHashtag(it) },
+            onHashtagSelected = { viewModel.selectActiveHashtag(it) },
+            editHashtag = { position, before, after -> viewModel.editHashtag(position, before, after) },
+            keyCallbacks = object : KeyCallbacks {
+                override fun onDeletePressed(position: Int) { viewModel.deleteFromHashtag(position) }
+                override fun onFinishInputPresses(position: Int) {
+                    // TODO viewModel.keyboardAction()
                 }
             }
     )
@@ -65,7 +53,7 @@ class MainActivity1 : AppCompatActivity() {
 
 }
 
-interface HashtagTextWatcher {
-    fun beforeTextChanged(position: Int, s: CharSequence?, start: Int, count: Int, after: Int)
-    fun onTextChanged(position: Int, s: CharSequence?, start: Int, before: Int, count: Int)
+interface KeyCallbacks {
+    fun onDeletePressed(position: Int)
+    fun onFinishInputPresses(position: Int)
 }
