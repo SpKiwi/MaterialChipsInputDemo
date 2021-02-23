@@ -191,28 +191,30 @@ class ViewModelImpl(
     ) {
         val length: Int get() = after.length
         fun isStartNewHashtag(): Boolean = after.length - before.length == 1 && hashtagEndChars.contains(after.last())
-        fun isHashtagSymbol(): Boolean = after.length == 1 && after[0] == ' '
+        fun isSingleHashtagSymbol(): Boolean = after.length == 1 && after[0] == ' '
     }
 
     private fun validateText(input: Input): HashtagInputValidation {
-        if (input.isHashtagSymbol()) {
+        if (input.isSingleHashtagSymbol()) {
             return HashtagInputValidation.Success
         }
 
         if (input.isStartNewHashtag()) {
             val fixedString = StringBuilder()
-            input.after.forEach {
-                if (isCharValid(it))
-                    fixedString.append(it)
+            input.after.forEachIndexed { index, char ->
+                if (isCharValid(index, char))
+                    fixedString.append(char)
             }
             return HashtagInputValidation.HashtagFinished(fixedString.toString())
         }
 
-        if (!input.after.all(::isCharValid)) {
-            return HashtagInputValidation.Failure(
-                    HashtagFailureReason.WRONG_SYMBOL,
-                    input.before
-            )
+        input.after.forEachIndexed { index, char ->
+            if (!isCharValid(index, char)) {
+                return HashtagInputValidation.Failure(
+                        HashtagFailureReason.WRONG_SYMBOL,
+                        input.before
+                )
+            }
         }
 
         if (input.length > MAX_HASHTAG_LENGTH) {
@@ -225,7 +227,14 @@ class ViewModelImpl(
         return HashtagInputValidation.Success
     }
 
-    private fun isCharValid(char: Char): Boolean = char.isLetterOrDigit() || char == '_'
+    private fun isCharValid(index: Int, char: Char): Boolean {
+        val validation: (Char) -> Boolean = { it.isLetterOrDigit() || it == '_' }
+        return if (index == 0) {
+            validation(char) || char == '#'
+        } else {
+            validation(char)
+        }
+    }
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
 //        TODO
