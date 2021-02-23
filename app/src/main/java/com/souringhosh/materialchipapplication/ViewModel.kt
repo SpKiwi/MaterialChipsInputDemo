@@ -17,12 +17,13 @@ interface ViewModel {
 }
 
 /* TODO LET THE VIEWS MANAGE THEIR STATE ON THEIR OWN. KEEP CURRENT HASHTAGS LOCALLY AND DO NOT PUSH THEM INTO LIVEDATA EACH TIME */
+/* TODO consider when hashtag becomes empty */
 interface ViewModelInteractions {
     fun selectActiveHashtag(position: Int)
     fun selectSuggestion(position: Int)
 
     fun deleteHashtag(position: Int)
-    fun deleteFromHashtag(position: Int) // todo call from activity
+    fun deleteFromHashtag(position: Int)
     fun editHashtag(hashtagPosition: Int, before: String, after: String)
     /**
      * Actions like Done/Enter/Delete
@@ -190,9 +191,14 @@ class ViewModelImpl(
     ) {
         val length: Int get() = after.length
         fun isStartNewHashtag(): Boolean = after.length - before.length == 1 && hashtagEndChars.contains(after.last())
+        fun isHashtagSymbol(): Boolean = after.length == 1 && after[0] == ' '
     }
 
     private fun validateText(input: Input): HashtagInputValidation {
+        if (input.isHashtagSymbol()) {
+            return HashtagInputValidation.Success
+        }
+
         if (input.isStartNewHashtag()) {
             val fixedString = StringBuilder()
             input.after.forEach {
@@ -273,7 +279,7 @@ data class Hashtag(
         val text: String,
         val state: State
 ) : ListItem {
-    override val id: Any get() = text
+    override val id: Int = 1 // TODO fix it and move it to the constructor, so that diff util could work as intended
 
     enum class State {
         /**
