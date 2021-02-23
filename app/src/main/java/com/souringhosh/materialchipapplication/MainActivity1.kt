@@ -1,6 +1,7 @@
 package com.souringhosh.materialchipapplication
 
 import android.os.Bundle
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -17,7 +18,10 @@ class MainActivity1 : AppCompatActivity() {
             onHashtagSelected = { viewModel.selectActiveHashtag(it) },
             editHashtag = { position, before, after -> viewModel.editHashtag(position, before, after) },
             keyCallbacks = object : KeyCallbacks {
-                override fun onDeletePressed(position: Int) { viewModel.deleteFromHashtag(position) }
+                override fun onDeletePressed(position: Int) {
+                    viewModel.deleteFromHashtag(position)
+                }
+
                 override fun onFinishInputPresses(position: Int) {
                     // TODO viewModel.keyboardAction()
                 }
@@ -48,6 +52,14 @@ class MainActivity1 : AppCompatActivity() {
         })
         viewModel.suggestions.observe(this, Observer {
             suggestionAdapter.suggestions = it
+        })
+        viewModel.error.observe(this, Observer {
+            if (it == null) {
+                hashtagError.visibility = View.INVISIBLE
+            } else {
+                hashtagError.visibility = View.VISIBLE
+                // TODO change text message
+            }
         })
     }
 

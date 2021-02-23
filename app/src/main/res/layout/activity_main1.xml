@@ -18,6 +18,16 @@
         tools:listitem="@layout/hashtag"
         tools:orientation="horizontal" />
 
+    <TextView
+        android:id="@+id/hashtagError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="error"
+        android:visibility="visible"
+        app:layout_constraintEnd_toEndOf="@id/hashtagRecycler"
+        app:layout_constraintStart_toStartOf="@id/hashtagRecycler"
+        app:layout_constraintTop_toBottomOf="@id/hashtagRecycler" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/suggestionRecycler"
         android:layout_width="0dp"
@@ -25,7 +35,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/hashtagRecycler"
+        app:layout_constraintTop_toBottomOf="@id/hashtagError"
         tools:itemCount="5"
         tools:listitem="@layout/suggestion" />
 
