@@ -14,6 +14,7 @@ import com.souringhosh.materialchipapplication.HashtagTextWatcher
 import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
+import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosition
 
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,
@@ -76,8 +77,8 @@ class HashtagAdapter(
         super.onViewAttachedToWindow(holder)
         holder.apply {
             itemView.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    val hashtag = hashtags[adapterPosition]
+                safeAdapterPosition?.let {
+                    val hashtag = hashtags[it]
                     if (hashtag.state != Hashtag.State.EDIT) {
                         onHashtagSelected(adapterPosition)
                     }
@@ -85,9 +86,7 @@ class HashtagAdapter(
             }
             hashtagInput.addTextChangedListener(textWatcher)
             hashtagDelete.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onHashtagDeleteClick(adapterPosition)
-                }
+                safeAdapterPosition?.let { onHashtagDeleteClick(it) }
             }
         }
     }
