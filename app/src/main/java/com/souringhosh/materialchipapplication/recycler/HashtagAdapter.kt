@@ -15,6 +15,7 @@ import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
 import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosition
+import com.souringhosh.materialchipapplication.views.SimpleEditText
 
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,
@@ -101,8 +102,8 @@ class HashtagAdapter(
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val hashtagInput: EditText by lazy { view.findViewById<EditText>(R.id.hashtag_text_edit) }
-        val hashtagDelete: EditText by lazy { view.findViewById<EditText>(R.id.hashtag_delete_button) }
+        val hashtagInput: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_text_edit) }
+        val hashtagDelete: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_delete_button) }
     }
 
 }

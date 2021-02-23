@@ -5,7 +5,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
-    <EditText
+    <com.souringhosh.materialchipapplication.views.SimpleEditText
         android:id="@+id/hashtag_text_edit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
