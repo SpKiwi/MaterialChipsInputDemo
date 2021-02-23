@@ -227,9 +227,11 @@ class ViewModelImpl(
                 if (isCharValid(index, char))
                     fixedStringBuilder.append(char)
             }
-            val fixedString = fixedStringBuilder.toString()
-            if (fixedString.length > 1) {
-                return HashtagInputValidation.HashtagFinished(fixedString)
+            if (fixedStringBuilder.length > 1) {
+                if (!fixedStringBuilder.startsWith("#")) {
+                    fixedStringBuilder.insert(0, "#")
+                }
+                return HashtagInputValidation.HashtagFinished(fixedStringBuilder.toString())
             }
         }
 
