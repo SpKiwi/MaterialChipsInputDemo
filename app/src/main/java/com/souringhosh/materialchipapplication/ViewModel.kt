@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.SuggestionInteractor
+import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveData
 import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
@@ -170,7 +171,12 @@ class ViewModelImpl(
                             }
                 }
                 is HashtagInputValidation.HashtagFinished -> {
-                    val newHashtag = currentHashtags[hashtagPosition].copy(text = validationResult.correctedHashtag, state = Hashtag.State.READY)
+                    val correctedHashtag = validationResult.correctedHashtag
+                    val newHashtag = currentHashtags[hashtagPosition].copy(
+                            text = validationResult.correctedHashtag,
+                            state = Hashtag.State.READY,
+                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                    )
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
@@ -179,7 +185,12 @@ class ViewModelImpl(
                             }
                 }
                 is HashtagInputValidation.Failure -> {
-                    val newHashtag = currentHashtags[hashtagPosition].copy(text = validationResult.correctedHashtag, state = Hashtag.State.EDIT)
+                    val correctedHashtag = validationResult.correctedHashtag
+                    val newHashtag = currentHashtags[hashtagPosition].copy(
+                            text = validationResult.correctedHashtag,
+                            state = Hashtag.State.EDIT,
+                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                    )
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
@@ -315,7 +326,8 @@ enum class HashtagFailureReason {
 data class Hashtag(
         override val id: Long,
         val text: String,
-        val state: State
+        val state: State,
+        val shouldCorrectSpelling: SingleEventFlag = SingleEventFlag()
 ) : ListItem {
 
     enum class State {

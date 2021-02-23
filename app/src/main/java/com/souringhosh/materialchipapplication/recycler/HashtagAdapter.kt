@@ -187,7 +187,7 @@ class HashtagAdapter(
             val newElement = newList[newItemPosition]
 
             val diff = Bundle().apply {
-                if (oldElement.text != newElement.text) {
+                if (oldElement.text != newElement.text || newElement.shouldCorrectSpelling.value) {
                     putByte(HASHTAG_NEW_TEXT, -1)
                 }
                 if (oldElement.state != newElement.state) {
