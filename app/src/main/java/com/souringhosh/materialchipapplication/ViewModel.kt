@@ -208,7 +208,7 @@ class ViewModelImpl(
             val after: String
     ) {
         fun isStartNewHashtag(): Boolean = after.length - before.length == 1 && hashtagEndChars.contains(after.last())
-        fun isSingleHashtagSymbol(): Boolean = after.length == 1 && after[0] == ' '
+        fun isSingleHashtagSymbol(): Boolean = after.length == 1 && after[0] == '#'
     }
 
     private fun validateText(input: Input): HashtagInputValidation {
@@ -217,7 +217,7 @@ class ViewModelImpl(
         }
 
         val formattedInput = getCleanHashtag(input.after)
-        if (formattedInput.isBlank()) {
+        if (formattedInput.isEmpty()) {
             return HashtagInputValidation.Success
         }
 
