@@ -19,7 +19,6 @@ interface ViewModel {
 }
 
 /* TODO LET THE VIEWS MANAGE THEIR STATE ON THEIR OWN. KEEP CURRENT HASHTAGS LOCALLY AND DO NOT PUSH THEM INTO LIVEDATA EACH TIME */
-/* TODO consider when hashtag becomes empty */
 interface ViewModelInteractions {
     fun selectActiveHashtag(position: Int)
     fun selectSuggestion(position: Int)
@@ -90,14 +89,15 @@ class ViewModelImpl(
         synchronized(lock) {
             val previousHashtagPosition = currentHashtagPosition
             if (previousHashtagPosition != position) {
+                currentHashtagPosition = position
                 val currentHashtag = currentHashtags[position]
                 suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text)
 
                 val newHashtags = currentHashtags.toMutableList()
                         .mapIndexed { index, hashtag ->
                             val newState = when (index) {
-                                position -> Hashtag.State.EDIT
                                 currentHashtags.lastIndex -> Hashtag.State.LAST
+                                position -> Hashtag.State.EDIT
                                 else -> Hashtag.State.READY
                             }
                             hashtag.copy(text = hashtag.text, state = newState)

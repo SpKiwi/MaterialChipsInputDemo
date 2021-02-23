@@ -88,7 +88,7 @@ class HashtagAdapter(
         super.onViewAttachedToWindow(holder)
         holder.apply {
             /* Selection */
-            itemView.setOnFocusChangeListener { _, hasFocus ->
+            hashtagInput.setOnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) {
                     safeAdapterPosition?.let {
                         onHashtagSelected(it)
