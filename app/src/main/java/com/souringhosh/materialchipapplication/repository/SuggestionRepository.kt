@@ -1,5 +1,6 @@
 package com.souringhosh.materialchipapplication.repository
 
+import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.delay
@@ -49,4 +50,6 @@ class MockSuggestionRepository : SuggestionRepository {
 
 inline class Suggestion(
         val value: String
-)
+) : ListItem {
+    override val id: Any get() = value
+}

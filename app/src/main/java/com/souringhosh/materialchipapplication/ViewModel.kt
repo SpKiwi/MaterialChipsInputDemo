@@ -6,6 +6,7 @@ import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.SuggestionInteractor
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveData
+import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import io.reactivex.disposables.CompositeDisposable
 
 interface ViewModel {
@@ -20,12 +21,12 @@ interface ViewModelInteractions {
     fun selectSuggestion(position: Int)
 
     fun deleteHashtag(position: Int)
-    fun deleteFromHashtag(position: Int)
+    fun deleteFromHashtag(position: Int) // todo call from activity
     fun editHashtag(hashtagPosition: Int, before: String, after: String)
     /**
      * Actions like Done/Enter/Delete
      **/
-    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction)
+    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction) // todo WIP
 }
 
 class ViewModelImpl(
@@ -212,7 +213,7 @@ class ViewModelImpl(
     }
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
-//        TODO 
+//        TODO
 //        when (action) {
 //            HashtagKeyboardAction.DELETE -> {
 //
@@ -263,7 +264,9 @@ enum class HashtagFailureReason {
 data class Hashtag(
         val text: String,
         val state: State
-) {
+) : ListItem {
+    override val id: Any get() = text
+
     enum class State {
         /**
          * Plain text hashtag which the user is entering manually.

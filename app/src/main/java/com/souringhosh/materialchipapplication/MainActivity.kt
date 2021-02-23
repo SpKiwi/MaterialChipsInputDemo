@@ -34,26 +34,43 @@ class MainActivity : AppCompatActivity() {
         textInputEditText.addTextChangedListener(object : TextWatcher {
 
             override fun afterTextChanged(s: Editable?) {
-                val trimmed = s.toString().trim { it <= ' ' }
-                if (trimmed.length > 1 && trimmed.endsWith(",")) {
-                    val chip = HashtagView(this@MainActivity)
-                    chip.setText(trimmed.substring(0, trimmed.length - 1))
-                    chipGroup.addView(chip)
-                    chip.setOnCloseIconClickListener {
-                        chipGroup.removeView(chip)
-                    }
-                    s?.clear()
-                }
+                println()
+//                val trimmed = s.toString().trim { it <= ' ' }
+//                if (trimmed.length > 1 && trimmed.endsWith(",")) {
+//                    val chip = HashtagView(this@MainActivity)
+//                    chip.setText(trimmed.substring(0, trimmed.length - 1))
+//                    chipGroup.addView(chip)
+//                    chip.setOnCloseIconClickListener {
+//                        chipGroup.removeView(chip)
+//                    }
+//                    s?.clear()
+//                }
             }
 
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            /*
+            * start - стартовая позиция старого символа
+            * after - сколько символов вставит
+            * в @s тут старый текст
+            * */
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+                println()
+            }
+
+            /*
+            * start - стартовая позиция нового символа
+            * count - сколько символов вставит
+            * в @s тут будет новый текст
+            * */
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                println()
+            }
         })
 
         /**
-         * Deleting chips on pressing backspace on keypad
+         * LISTEN TO DELETE OR NEXT/ENTER
          **/
         textInputEditText.setOnKeyListener { view, _, event ->
+            println()
             if (event != null && event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DEL && (view as EditText).selectionStart == 0) {
                 if (chipGroup.childCount > 0) {
                     val chip = chipGroup.getChildAt(chipGroup.childCount - 1)
