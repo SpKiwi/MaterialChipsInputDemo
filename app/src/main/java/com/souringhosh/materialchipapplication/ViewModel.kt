@@ -31,7 +31,7 @@ interface ViewModelInteractions {
     /**
      * Actions like Done/Enter/Delete
      **/
-    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction) // todo WIP
+    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction)
 }
 
 class ViewModelImpl(
@@ -163,12 +163,22 @@ class ViewModelImpl(
             val input = Input(before = before, after = after)
             when (val validationResult = validateText(input)) {
                 is HashtagInputValidation.Success -> {
-                    val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = Hashtag.State.EDIT)
-                    newHashtags = currentHashtags
-                            .toMutableList()
-                            .apply {
-                                set(hashtagPosition, newHashtag)
-                            }
+                    val currentHashtag = currentHashtags[hashtagPosition]
+                    if (after.isEmpty() && currentHashtag.state == Hashtag.State.EDIT) {
+                        newHashtags = currentHashtags
+                                .toMutableList()
+                                .apply {
+                                    removeAt(hashtagPosition)
+                                }
+                    } else {
+                        val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
+                        val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
+                        newHashtags = currentHashtags
+                                .toMutableList()
+                                .apply {
+                                    set(hashtagPosition, newHashtag)
+                                }
+                    }
                 }
                 is HashtagInputValidation.HashtagFinished -> {
                     val correctedHashtag = validationResult.correctedHashtag
@@ -186,9 +196,10 @@ class ViewModelImpl(
                 }
                 is HashtagInputValidation.Failure -> {
                     val correctedHashtag = validationResult.correctedHashtag
+                    val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
-                            state = Hashtag.State.EDIT,
+                            state = newHashtagState,
                             shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
                     )
                     newHashtags = currentHashtags
@@ -274,16 +285,10 @@ class ViewModelImpl(
     private fun getCleanHashtagLength(hashtagText: String): Int = hashtagText.count(charValidation)
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
-//        TODO
-//        when (action) {
-//            HashtagKeyboardAction.DELETE -> {
-//
-//            }
-//            HashtagKeyboardAction.ENTER -> TODO()
-//        }.exhaustive
+        TODO()
     }
 
-    enum class HashtagKeyboardAction { // TODO check if it is needed
+    enum class HashtagKeyboardAction {
         DELETE, ENTER
     }
 
