@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.Hashtag
@@ -124,7 +125,7 @@ class HashtagAdapter(
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val hashtagInput: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_text_edit) }
-        val hashtagDelete: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_delete_button) }
+        val hashtagDelete: ImageView by lazy { view.findViewById<ImageView>(R.id.hashtag_delete_button) }
     }
 
 }
