@@ -124,8 +124,13 @@ class ViewModelImpl(
                     }
                     .toMutableList()
                     .apply {
-                        if (currentHashtagPosition == currentHashtags.lastIndex) {
-                            add(Hashtag(generateId(), "#", Hashtag.State.LAST))
+                        val lastIndex = currentHashtags.lastIndex
+                        if (currentHashtagPosition == lastIndex) {
+                            add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                            currentHashtagPosition++
+                        } else {
+                            currentHashtagPosition = lastIndex
+                            set(lastIndex, currentHashtags[lastIndex].copy(shouldGainFocus = SingleEventFlag(true)))
                         }
                     }
 
@@ -192,7 +197,7 @@ class ViewModelImpl(
                         suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
                     }
                 }
-                is HashtagInputValidation.HashtagFinished -> {
+                is HashtagInputValidation.HashtagFinished -> { // todo todo todo fix current hashtag?
                     val correctedHashtag = validationResult.correctedHashtag
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
@@ -338,22 +343,23 @@ data class Hashtag(
 
     enum class State {
         /**
-         * Plain text hashtag which the user is entering manually.
+         * Hashtag which the user is currently entering and is not last
          **/
         EDIT,
 
         /**
-         * Hashtag which is finished.
+         * Hashtag which is finished and not being edited
          **/
         READY,
 
         /**
          * Hashtag that is selected and can be deleted by pressing back again
+         * TODO: not yet implemented
          **/
         SELECTED,
 
         /**
-         * Last hashtag
+         * Last hashtag always has to keep this state
          **/
         LAST
     }
