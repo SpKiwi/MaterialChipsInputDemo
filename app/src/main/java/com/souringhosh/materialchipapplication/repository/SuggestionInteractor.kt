@@ -2,6 +2,7 @@ package com.souringhosh.materialchipapplication.repository
 
 import io.reactivex.Observable
 import io.reactivex.subjects.PublishSubject
+import java.util.concurrent.TimeUnit
 
 class SuggestionInteractor(
         private val suggestionRepository: SuggestionRepository
@@ -11,11 +12,13 @@ class SuggestionInteractor(
     private var currentHashtags: List<String> = emptyList()
 
     fun observeSuggestions(): Observable<State> {
-        val some: Observable<State> = suggestionSubject.switchMap {
-            suggestionRepository
-                    .getSuggestions() // todo on error wait and retry
-                    .toObservable()
-        }
+        val some: Observable<State> = suggestionSubject
+                .debounce(1000, TimeUnit.MILLISECONDS)
+                .switchMap {
+                    suggestionRepository
+                            .getSuggestions() // todo on error wait and retry
+                            .toObservable()
+                }
                 .map { suggestions ->
                     State.Loaded(
                             suggestions.filter { suggestion ->
