@@ -24,7 +24,7 @@ class HashtagAdapter(
         private val onHashtagSelected: (Int) -> Unit,
         private val editHashtag: (Int, String, String) -> Unit,
         private val keyCallbacks: KeyCallbacks
-) : RecyclerView.Adapter<HashtagAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<HashtagAdapter.HashtagHolder>() {
 
     var hashtags: List<Hashtag> = emptyList()
         set(value) {
@@ -36,21 +36,21 @@ class HashtagAdapter(
             }
         }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HashtagHolder =
+            HashtagHolder(
                     LayoutInflater.from(parent.context).inflate(R.layout.hashtag, parent, false)
             )
 
     override fun getItemCount(): Int = hashtags.size
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: HashtagHolder, position: Int) {
         val hashtag = hashtags[position]
         preventTextNotify {
             holder.bind(hashtag)
         }
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
+    override fun onBindViewHolder(holder: HashtagHolder, position: Int, payloads: MutableList<Any>) {
         val hashtag = hashtags[position]
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
@@ -81,10 +81,10 @@ class HashtagAdapter(
         isTextWatcherEnabled = true
     }
 
-    /* Position */
+    /* Map of Position to Hashtag text before change was made */
     private val beforeTexts: MutableMap<Int, String> = mutableMapOf()
 
-    override fun onViewAttachedToWindow(holder: ViewHolder) {
+    override fun onViewAttachedToWindow(holder: HashtagHolder) {
         super.onViewAttachedToWindow(holder)
         holder.apply {
             /* Selection */
@@ -135,7 +135,7 @@ class HashtagAdapter(
         }
     }
 
-    override fun onViewDetachedFromWindow(holder: ViewHolder) {
+    override fun onViewDetachedFromWindow(holder: HashtagHolder) {
         super.onViewDetachedFromWindow(holder)
         holder.apply {
             itemView.onFocusChangeListener = null
@@ -145,7 +145,7 @@ class HashtagAdapter(
         }
     }
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class HashtagHolder(view: View) : RecyclerView.ViewHolder(view) {
         val hashtagInput: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_text_edit) }
         val hashtagDelete: ImageView by lazy { view.findViewById<ImageView>(R.id.hashtag_delete_button) }
 

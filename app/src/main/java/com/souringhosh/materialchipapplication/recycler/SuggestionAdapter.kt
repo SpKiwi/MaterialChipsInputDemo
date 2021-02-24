@@ -13,7 +13,7 @@ import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosit
 
 class SuggestionAdapter(
         private val onSuggestionClick: (Int) -> Unit
-) : RecyclerView.Adapter<SuggestionAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<SuggestionAdapter.SuggestionHolder>() {
 
     var suggestions: List<Suggestion> = emptyList()
         set(value) {
@@ -23,30 +23,30 @@ class SuggestionAdapter(
             diffResult.dispatchUpdatesTo(this)
         }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionHolder =
+            SuggestionHolder(
                     LayoutInflater.from(parent.context).inflate(R.layout.suggestion, parent, false)
             )
 
     override fun getItemCount(): Int = suggestions.size
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: SuggestionHolder, position: Int) {
         holder.suggestionText.text = suggestions[position].value
     }
 
-    override fun onViewAttachedToWindow(holder: ViewHolder) {
+    override fun onViewAttachedToWindow(holder: SuggestionHolder) {
         super.onViewAttachedToWindow(holder)
         holder.itemView.setOnClickListener {
             holder.safeAdapterPosition?.let { onSuggestionClick(it) }
         }
     }
 
-    override fun onViewDetachedFromWindow(holder: ViewHolder) {
+    override fun onViewDetachedFromWindow(holder: SuggestionHolder) {
         super.onViewDetachedFromWindow(holder)
         holder.itemView.setOnClickListener(null)
     }
 
-    class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+    class SuggestionHolder(view: View) : RecyclerView.ViewHolder(view) {
         val suggestionText: TextView by lazy { view.findViewById<TextView>(R.id.suggestionText) }
     }
 

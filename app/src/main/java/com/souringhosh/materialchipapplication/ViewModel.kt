@@ -36,6 +36,9 @@ class ViewModelImpl(
         private val suggestionInteractor: SuggestionInteractor
 ) : ViewModel, ViewModelInteractions {
 
+    /**
+     * For a more efficient usage of diff util
+     **/
     private val lastHashtagId: AtomicLong = AtomicLong(0)
     private fun generateId(): Long {
         return lastHashtagId.getAndIncrement()
@@ -76,7 +79,7 @@ class ViewModelImpl(
                         }
         )
 
-        suggestionInteractor.getSuggestions(emptyList(), "")
+        suggestionInteractor.getSuggestions(emptyList(), null)
     }
 
     private fun getHashtagStringList(): List<String> = mutableListOf<String?>().run {
@@ -144,17 +147,18 @@ class ViewModelImpl(
         }
     }
 
-    override fun deleteFromHashtag(position: Int) { // TODO SELECTION (подразумевается STATE у хештега, пока без него)
+    override fun deleteFromHashtag(position: Int) {
         synchronized(lock) {
-            if (currentHashtags.getOrNull(position - 1) == null) {
+            val priorElementPosition = position - 1
+            if (currentHashtags.getOrNull(priorElementPosition) == null) {
                 return
             }
 
-            currentHashtagPosition = position - 1
+            currentHashtagPosition = priorElementPosition
             val newHashtags = currentHashtags
                     .toMutableList()
                     .apply {
-                        removeAt(position - 1)
+                        removeAt(priorElementPosition)
                     }
             hashtagsMutable.postValue(newHashtags)
         }
@@ -165,10 +169,12 @@ class ViewModelImpl(
             currentHashtagPosition = hashtagPosition
             val newHashtags: List<Hashtag>
             val input = Input(before = before, after = after)
+
             when (val validationResult = validateText(input)) {
                 is HashtagInputValidation.Success -> {
                     val currentHashtag = currentHashtags[hashtagPosition]
                     if (after.isEmpty() && currentHashtag.state == Hashtag.State.EDIT) {
+                        /* Delete this element */
                         newHashtags = currentHashtags
                                 .toMutableList()
                                 .apply {
@@ -234,7 +240,7 @@ class ViewModelImpl(
             return HashtagInputValidation.Success
         }
 
-        val formattedInput = getCleanHashtag(input.after)
+        val formattedInput = removeTrailingHashtag(input.after)
         if (formattedInput.isEmpty()) {
             return HashtagInputValidation.Success
         }
@@ -245,7 +251,7 @@ class ViewModelImpl(
                 if (isCharValid(index, char))
                     fixedStringBuilder.append(char)
             }
-            if (fixedStringBuilder.length > 1) {
+            if (fixedStringBuilder.length > MIN_HASHTAG_LENGTH) {
                 if (!fixedStringBuilder.startsWith("#")) {
                     fixedStringBuilder.insert(0, "#")
                 }
@@ -281,15 +287,13 @@ class ViewModelImpl(
         }
     }
 
-    private fun getCleanHashtag(hashtagText: String): String {
+    private fun removeTrailingHashtag(hashtagText: String): String {
         return if (hashtagText.startsWith('#')) {
-            hashtagText.replaceFirst("#", "", true)
+            hashtagText.replaceFirst("#", "")
         } else {
             hashtagText
         }
     }
-
-    private fun getCleanHashtagLength(hashtagText: String): Int = hashtagText.count(charValidation)
 
     override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
         TODO()
@@ -300,21 +304,8 @@ class ViewModelImpl(
     }
 
     private sealed class HashtagInputValidation {
-        /**
-         * Text is valid, proceed with it's input
-         **/
         object Success : HashtagInputValidation()
-
-        /**
-         * Space, hashtag symbol should convert text to READY hashtag
-         **/
-        data class HashtagFinished(
-                val correctedHashtag: String
-        ) : HashtagInputValidation()
-
-        /**
-         * Something wrong with text, should delete/correct it
-         **/
+        data class HashtagFinished(val correctedHashtag: String) : HashtagInputValidation()
         data class Failure(
                 val reason: HashtagFailureReason,
                 val correctedHashtag: String

@@ -1,8 +1,9 @@
-package com.souringhosh.materialchipapplication
+package com.souringhosh.materialchipapplication.utils.extensions
 
 import android.graphics.Rect
 import android.view.TouchDelegate
 import android.view.View
+import com.souringhosh.materialchipapplication.R
 
 fun View.enlargeHitArea() {
     val pixels = resources.getDimensionPixelSize(R.dimen.default_enlarge_size)
