@@ -15,7 +15,7 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:itemCount="4"
         tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-        tools:listitem="@layout/hashtag"
+        tools:listitem="@layout/hashtag_item"
         tools:orientation="horizontal" />
 
     <TextView

@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.Hashtag
 import com.souringhosh.materialchipapplication.KeyCallbacks
+import com.souringhosh.materialchipapplication.OnHashtagEditListener
 import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
@@ -22,7 +23,7 @@ import com.souringhosh.materialchipapplication.views.SimpleEditText
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,
         private val onHashtagSelected: (Int) -> Unit,
-        private val editHashtag: (Int, String, String) -> Unit,
+        private val onHashtagEditListener: OnHashtagEditListener,
         private val keyCallbacks: KeyCallbacks
 ) : RecyclerView.Adapter<HashtagAdapter.HashtagHolder>() {
 
@@ -38,7 +39,7 @@ class HashtagAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HashtagHolder =
             HashtagHolder(
-                    LayoutInflater.from(parent.context).inflate(R.layout.hashtag, parent, false)
+                    LayoutInflater.from(parent.context).inflate(R.layout.hashtag_item, parent, false)
             )
 
     override fun getItemCount(): Int = hashtags.size
@@ -116,7 +117,11 @@ class HashtagAdapter(
                         safeAdapterPosition?.let {
                             val beforeText = beforeTexts.remove(it) ?: ""
                             val afterText = s?.toString() ?: ""
-                            editHashtag(it, beforeText, afterText)
+                            onHashtagEditListener.onHashtagEdit(
+                                    position = it,
+                                    before = beforeText,
+                                    after = afterText
+                            )
                         }
                     }
                 }
@@ -145,9 +150,9 @@ class HashtagAdapter(
         }
     }
 
-    class HashtagHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val hashtagInput: SimpleEditText by lazy { view.findViewById<SimpleEditText>(R.id.hashtag_text_edit) }
-        val hashtagDelete: ImageView by lazy { view.findViewById<ImageView>(R.id.hashtag_delete_button) }
+    class HashtagHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val hashtagInput: SimpleEditText = itemView.findViewById<SimpleEditText>(R.id.hashtag_text_edit)
+        val hashtagDelete: ImageView = itemView.findViewById<ImageView>(R.id.hashtag_delete_button)
 
         fun bind(hashtag: Hashtag) {
             bindText(hashtag.text)

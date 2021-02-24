@@ -19,7 +19,11 @@ class MainActivity1 : AppCompatActivity() {
     private val hashtagAdapter: HashtagAdapter = HashtagAdapter(
             onHashtagDeleteClick = { viewModel.deleteHashtag(it) },
             onHashtagSelected = { viewModel.selectActiveHashtag(it) },
-            editHashtag = { position, before, after -> viewModel.editHashtag(position, before, after) },
+            onHashtagEditListener = object : OnHashtagEditListener {
+                override fun onHashtagEdit(position: Int, before: String, after: String) {
+                    viewModel.editHashtag(position, before, after)
+                }
+            },
             keyCallbacks = object : KeyCallbacks {
                 override fun onDeletePressed(position: Int) {
                     viewModel.deleteFromHashtag(position)
@@ -66,7 +70,7 @@ class MainActivity1 : AppCompatActivity() {
         })
 
         viewModel.suggestions.observe(this, Observer {
-            suggestionAdapter.suggestions = it
+            suggestionAdapter.items = it
         })
         viewModel.error.observe(this, Observer {
             if (it == null) {
@@ -83,4 +87,8 @@ class MainActivity1 : AppCompatActivity() {
 interface KeyCallbacks {
     fun onDeletePressed(position: Int)
     fun onFinishInputPresses(position: Int)
+}
+
+interface OnHashtagEditListener {
+    fun onHashtagEdit(position: Int, before: String, after: String)
 }

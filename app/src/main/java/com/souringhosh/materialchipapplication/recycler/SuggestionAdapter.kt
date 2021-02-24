@@ -15,7 +15,7 @@ class SuggestionAdapter(
         private val onSuggestionClick: (Int) -> Unit
 ) : RecyclerView.Adapter<SuggestionAdapter.SuggestionHolder>() {
 
-    var suggestions: List<Suggestion> = emptyList()
+    var items: List<Suggestion> = emptyList()
         set(value) {
             val diffResult: DiffUtil.DiffResult = DiffUtil.calculateDiff(DiffCallback(field, value))
             field = value
@@ -28,10 +28,10 @@ class SuggestionAdapter(
                     LayoutInflater.from(parent.context).inflate(R.layout.suggestion, parent, false)
             )
 
-    override fun getItemCount(): Int = suggestions.size
+    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: SuggestionHolder, position: Int) {
-        holder.suggestionText.text = suggestions[position].value
+        holder.suggestionText.text = items[position].value
     }
 
     override fun onViewAttachedToWindow(holder: SuggestionHolder) {
@@ -47,7 +47,7 @@ class SuggestionAdapter(
     }
 
     class SuggestionHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val suggestionText: TextView by lazy { view.findViewById<TextView>(R.id.suggestionText) }
+        val suggestionText: TextView by lazy { view.findViewById<TextView>(R.id.suggestion_text) }
     }
 
 }
