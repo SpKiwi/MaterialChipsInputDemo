@@ -197,7 +197,7 @@ class ViewModelImpl(
                         suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
                     }
                 }
-                is HashtagInputValidation.HashtagFinished -> { // todo todo todo fix current hashtag?
+                is HashtagInputValidation.HashtagFinished -> {
                     val correctedHashtag = validationResult.correctedHashtag
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
@@ -208,7 +208,11 @@ class ViewModelImpl(
                             .toMutableList()
                             .apply {
                                 set(hashtagPosition, newHashtag)
-                                add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                                if (removeTrailingHashtag(last().text).isBlank()) {
+                                    set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
+                                } else {
+                                    add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                                }
                             }
                     suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null)
                 }
