@@ -57,12 +57,11 @@ class MainActivity1 : AppCompatActivity() {
             })
         }
 
-        viewModel.hashtags.observe(this, Observer {
-            val previousSize = hashtagAdapter.itemCount
-            val newSize = it.size
-            hashtagAdapter.hashtags = it
-            if (previousSize < newSize) {
-                hashtagRecycler.layoutManager?.scrollToPosition(it.lastIndex)
+        viewModel.hashtags.observe(this, Observer { hashtags ->
+            hashtagAdapter.hashtags = hashtags
+            val readyHashtagsSize = hashtags.count { it.state == Hashtag.State.READY }
+            if (readyHashtagsSize == hashtags.size - 1) {
+                hashtagRecycler.scrollToPosition(hashtags.lastIndex)
             }
         })
 
