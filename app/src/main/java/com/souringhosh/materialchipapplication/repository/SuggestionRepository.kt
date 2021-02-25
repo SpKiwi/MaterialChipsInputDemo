@@ -4,23 +4,30 @@ import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import java.util.concurrent.TimeUnit
+import kotlin.concurrent.timer
 
 interface SuggestionRepository {
 
-    fun getSuggestions(): Single<List<Suggestion>>
+    suspend fun getSuggestions(): List<Suggestion>
 
 }
 
 class MockSuggestionRepository : SuggestionRepository {
 
-    override fun getSuggestions(): Single<List<Suggestion>> {
-        return Single.timer(500, TimeUnit.MILLISECONDS, Schedulers.io())
-                .map {
-                    mockData
-                            .shuffled()
-                            .take(10)
-                }
+    override suspend fun getSuggestions(): List<Suggestion> {
+        delay(500)
+        return mockData
+                .shuffled()
+                .take(10)
+//        return Single.timer(500, TimeUnit.MILLISECONDS, Schedulers.io())
+//                .map {
+//                    mockData
+//                            .shuffled()
+//                            .take(10)
+//                }
     }
 
     private val mockData: List<Suggestion> = listOf(

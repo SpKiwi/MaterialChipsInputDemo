@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.recycler.HashtagAdapter
 import com.souringhosh.materialchipapplication.recycler.SuggestionAdapter
 import com.souringhosh.materialchipapplication.repository.MockSuggestionRepository
-import com.souringhosh.materialchipapplication.repository.SuggestionInteractor
+import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
 import kotlinx.android.synthetic.main.activity_main1.*
 
 class MainActivity1 : AppCompatActivity() {
@@ -36,7 +36,7 @@ class MainActivity1 : AppCompatActivity() {
     )
     private val suggestionAdapter: SuggestionAdapter = SuggestionAdapter { viewModel.selectSuggestion(it) }
     private val viewModel: ViewModelImpl = ViewModelImpl(
-            SuggestionInteractor(
+            HashtagSuggestionInteractor(
                     MockSuggestionRepository()
             )
     )

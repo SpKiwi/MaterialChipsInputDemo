@@ -3,13 +3,15 @@ package com.souringhosh.materialchipapplication
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.souringhosh.materialchipapplication.repository.Suggestion
-import com.souringhosh.materialchipapplication.repository.SuggestionInteractor
+import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
 import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveData
 import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
-import io.reactivex.disposables.CompositeDisposable
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.CoroutineContext
 
 interface ViewModel {
     val hashtags: LiveData<List<Hashtag>>
@@ -25,16 +27,15 @@ interface ViewModelInteractions {
     fun deleteHashtag(position: Int)
     fun deleteFromHashtag(position: Int)
     fun editHashtag(hashtagPosition: Int, before: String, after: String)
-
-    /**
-     * Actions like Done/Enter/Delete
-     **/
-    fun keyboardAction(position: Int, action: ViewModelImpl.HashtagKeyboardAction)
 }
 
+@ExperimentalCoroutinesApi
+@FlowPreview
 class ViewModelImpl(
-        private val suggestionInteractor: SuggestionInteractor
-) : ViewModel, ViewModelInteractions {
+        private val suggestionInteractor: HashtagSuggestionInteractor
+) : ViewModel, ViewModelInteractions, CoroutineScope {
+
+    override val coroutineContext: CoroutineContext = Dispatchers.Main
 
     /**
      * For a more efficient usage of diff util
@@ -63,22 +64,20 @@ class ViewModelImpl(
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value
 
     init {
-        val comp = CompositeDisposable()
-        comp.add(
-                suggestionInteractor.observeSuggestions()
-                        .subscribe {
-                            when (it) {
-                                is SuggestionInteractor.State.Loading -> {
-                                    isSuggestionsLoadingMutable.postValue(true)
-                                }
-                                is SuggestionInteractor.State.Loaded -> {
-                                    isSuggestionsLoadingMutable.postValue(false)
-                                    suggestionsMutable.postValue(it.suggestions)
-                                }
+        launch {
+            suggestionInteractor.observeSuggestions()
+                    .collect {
+                        when (it) {
+                            is HashtagSuggestionInteractor.State.Loading -> {
+                                isSuggestionsLoadingMutable.postValue(true)
+                            }
+                            is HashtagSuggestionInteractor.State.Loaded -> {
+                                isSuggestionsLoadingMutable.postValue(false)
+                                suggestionsMutable.postValue(it.suggestions)
                             }
                         }
-        )
-
+                    }
+        }
         suggestionInteractor.getSuggestions(emptyList(), null)
     }
 
@@ -304,14 +303,6 @@ class ViewModelImpl(
         }
     }
 
-    override fun keyboardAction(position: Int, action: HashtagKeyboardAction) {
-        TODO()
-    }
-
-    enum class HashtagKeyboardAction {
-        DELETE, ENTER
-    }
-
     private sealed class HashtagInputValidation {
         object Success : HashtagInputValidation()
         data class HashtagFinished(val correctedHashtag: String) : HashtagInputValidation()
@@ -333,8 +324,8 @@ class ViewModelImpl(
 
 enum class HashtagFailureReason {
     MAX_SIZE_EXCEEDED,
-    WRONG_SYMBOL, // "_Special symbols not allowed"
-    INAPPROPRIATE_LANGUAGE // "_Inappropriate language not allowed"
+    WRONG_SYMBOL, // todo move to strings "_Special symbols not allowed"
+    INAPPROPRIATE_LANGUAGE // todo move to strings "_Inappropriate language not allowed"
 }
 
 data class Hashtag(
