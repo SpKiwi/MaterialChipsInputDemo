@@ -80,15 +80,9 @@ class ViewModelImpl(
         suggestionInteractor.getSuggestions(emptyList(), null)
     }
 
-    private fun getHashtagStringList(): List<String> = mutableListOf<String?>().run {
-        addAll(currentHashtags.map { it.text })
-        filterNotNull()
-    }
+    private fun getHashtagStringList(): List<String> = currentHashtags.map { it.text }
 
-    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = mutableListOf<String?>().run {
-        addAll(currentHashtags.map { it.text })
-        filterNotNull()
-    }
+    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = currentHashtags.map { it.text }
 
     fun selectActiveHashtag(position: Int) {
         val previousHashtagPosition = currentHashtagPosition

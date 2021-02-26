@@ -8,6 +8,7 @@ import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 @ExperimentalCoroutinesApi
 @FlowPreview
@@ -22,17 +23,21 @@ class HashtagSuggestionInteractor(
         val filteredSuggestionsFlow: Flow<State> = suggestionChannel
                 .asFlow()
                 .debounce(SEARCH_DEBOUNCE)
-                .flatMapLatest { searchString ->
-                    flow<List<Suggestion>> {
-                        emit(suggestionRepository.getSuggestions())
+                .flatMapLatest { _ ->
+                    flow<State> {
+                        if (Random.nextBoolean())
+                            throw RuntimeException()
+                        
+                        val suggestions = suggestionRepository.getSuggestions()
+                                .filter {
+                                    !currentHashtags.contains(it.value)
+                                }
+
+                        emit(State.Loaded(suggestions))
                     }
-                }
-                .map { searchResult ->
-                    val suggestions = searchResult
-                            .filter {
-                                !currentHashtags.contains(it.value)
+                            .catch {
+                                emit(State.Loaded(emptyList()))
                             }
-                    State.Loaded(suggestions)
                 }
         val loadingFlow: Flow<State> = loadingChannel
                 .asFlow()
