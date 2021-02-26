@@ -19,7 +19,6 @@ import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
 import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosition
-import com.souringhosh.materialchipapplication.views.SimpleEditText
 
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,

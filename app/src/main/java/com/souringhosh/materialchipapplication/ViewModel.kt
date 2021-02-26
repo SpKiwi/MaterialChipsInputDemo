@@ -6,34 +6,32 @@ import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
 import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
-import com.souringhosh.materialchipapplication.utils.helpers.DefaultMutableLiveData
+import com.souringhosh.materialchipapplication.utils.helpers.startWith
 import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
 
-interface ViewModel {
-    val hashtags: LiveData<List<Hashtag>>
-    val error: LiveData<HashtagFailureReason?>
-    val suggestions: LiveData<List<Suggestion>>
-    val isSuggestionsLoading: LiveData<Boolean>
-}
-
-interface ViewModelInteractions {
-    fun selectActiveHashtag(position: Int)
-    fun selectSuggestion(position: Int)
-
-    fun deleteHashtag(position: Int)
-    fun deleteFromHashtag(position: Int)
-    fun editHashtag(hashtagPosition: Int, before: String, after: String)
-}
+//interface ViewModel {
+//    val hashtags: LiveData<List<Hashtag>>
+//    val error: LiveData<HashtagFailureReason?>
+//    val suggestions: LiveData<List<Suggestion>>
+//    val isSuggestionsLoading: LiveData<Boolean>
+//
+//    fun selectActiveHashtag(position: Int)
+//    fun selectSuggestion(position: Int)
+//
+//    fun deleteHashtag(position: Int)
+//    fun deleteFromHashtag(position: Int)
+//    fun editHashtag(hashtagPosition: Int, before: String, after: String)
+//}
 
 @ExperimentalCoroutinesApi
 @FlowPreview
 class ViewModelImpl(
         private val suggestionInteractor: HashtagSuggestionInteractor
-) : ViewModel, ViewModelInteractions, CoroutineScope {
+) : /*ViewModel, */CoroutineScope {
 
     override val coroutineContext: CoroutineContext = Dispatchers.Main
 
@@ -45,23 +43,25 @@ class ViewModelImpl(
         return lastHashtagId.getAndIncrement()
     }
 
-    private val hashtagsMutable: DefaultMutableLiveData<List<Hashtag>> = DefaultMutableLiveData(listOf(Hashtag(generateId(), "", Hashtag.State.LAST)))
-    override val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
+    private val hashtagsMutable: MutableLiveData<List<Hashtag>> = MutableLiveData<List<Hashtag>>().startWith(
+            listOf(Hashtag(generateId(), "", Hashtag.State.LAST))
+    )
+    val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
     private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
-    override val error: LiveData<HashtagFailureReason?> get() = errorMutable
+    val error: LiveData<HashtagFailureReason?> get() = errorMutable
 
-    private val suggestionsMutable: DefaultMutableLiveData<List<Suggestion>> = DefaultMutableLiveData(emptyList())
-    override val suggestions: LiveData<List<Suggestion>> get() = suggestionsMutable
+    private val suggestionsMutable: MutableLiveData<List<Suggestion>> = MutableLiveData<List<Suggestion>>().startWith(emptyList())
+    val suggestions: LiveData<List<Suggestion>> get() = suggestionsMutable
 
-    private val isSuggestionsLoadingMutable: DefaultMutableLiveData<Boolean> = DefaultMutableLiveData(true)
-    override val isSuggestionsLoading: LiveData<Boolean> get() = isSuggestionsLoadingMutable
+    private val isSuggestionsLoadingMutable: MutableLiveData<Boolean> = MutableLiveData<Boolean>().startWith(true)
+    val isSuggestionsLoading: LiveData<Boolean> get() = isSuggestionsLoadingMutable
 
     private var currentHashtagPosition: Int = 0
     private val lock: Any = Any()
 
-    private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value
-    private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value
+    private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
+    private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
 
     init {
         launch {
@@ -91,7 +91,7 @@ class ViewModelImpl(
         filterNotNull()
     }
 
-    override fun selectActiveHashtag(position: Int) {
+    fun selectActiveHashtag(position: Int) {
         synchronized(lock) {
             val previousHashtagPosition = currentHashtagPosition
             if (previousHashtagPosition != position) {
@@ -113,7 +113,7 @@ class ViewModelImpl(
         }
     }
 
-    override fun selectSuggestion(position: Int) {
+    fun selectSuggestion(position: Int) {
         synchronized(lock) {
             val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
             val newHashtags: MutableList<Hashtag> = currentHashtags
@@ -138,7 +138,7 @@ class ViewModelImpl(
         }
     }
 
-    override fun deleteHashtag(position: Int) {
+    fun deleteHashtag(position: Int) {
         synchronized(lock) {
             if (position < currentHashtagPosition) {
                 currentHashtagPosition--
@@ -151,7 +151,7 @@ class ViewModelImpl(
         }
     }
 
-    override fun deleteFromHashtag(position: Int) {
+    fun deleteFromHashtag(position: Int) {
         synchronized(lock) {
             val priorElementPosition = position - 1
             if (currentHashtags.getOrNull(priorElementPosition) == null) {
@@ -168,7 +168,7 @@ class ViewModelImpl(
         }
     }
 
-    override fun editHashtag(hashtagPosition: Int, before: String, after: String) {
+    fun editHashtag(hashtagPosition: Int, before: String, after: String) {
         synchronized(lock) {
             currentHashtagPosition = hashtagPosition
             val newHashtags: List<Hashtag>
