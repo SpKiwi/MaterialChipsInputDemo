@@ -18,7 +18,7 @@ import com.souringhosh.materialchipapplication.OnHashtagEditListener
 import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
-import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosition
+import com.souringhosh.materialchipapplication.utils.ui.adapter.nullableAdapterPosition
 
 class HashtagAdapter(
         private val onHashtagDeleteClick: (Int) -> Unit,
@@ -84,8 +84,6 @@ class HashtagAdapter(
 
     /* Map of Position to Hashtag text before change was made */
     private val beforeTexts: MutableMap<Int, String> = mutableMapOf()
-    /* Map of Position to TextWatcher */
-    private val textWatchers: MutableMap<Int, TextWatcher> = mutableMapOf()
 
     override fun onViewAttachedToWindow(holder: HashtagHolder) {
         super.onViewAttachedToWindow(holder)
@@ -93,21 +91,21 @@ class HashtagAdapter(
             /* Selection */
             hashtagInput.setOnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) {
-                    safeAdapterPosition?.let {
+                    nullableAdapterPosition?.let {
                         onHashtagSelected(it)
                     }
                 }
             }
             /* Delete */
             hashtagDelete.setOnClickListener {
-                safeAdapterPosition?.let { onHashtagDeleteClick(it) }
+                nullableAdapterPosition?.let { onHashtagDeleteClick(it) }
             }
             /* Text input */
             val textWatcher = object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {}
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                     if (isTextWatcherEnabled) {
-                        safeAdapterPosition?.let {
+                        nullableAdapterPosition?.let {
                             val beforeText = s?.toString() ?: ""
                             beforeTexts[it] = beforeText
                         }
@@ -116,7 +114,7 @@ class HashtagAdapter(
 
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                     if (isTextWatcherEnabled) {
-                        safeAdapterPosition?.let {
+                        nullableAdapterPosition?.let {
                             val beforeText = beforeTexts.remove(it) ?: ""
                             val afterText = s?.toString() ?: ""
                             onHashtagEditListener.onHashtagEdit(
@@ -129,14 +127,14 @@ class HashtagAdapter(
                 }
             }
             hashtagInput.addTextChangedListener(textWatcher)
-            textWatchers[adapterPosition] = textWatcher
+            hashtagInput.tag = textWatcher
             /* Keyboard */
             hashtagInput.setOnKeyListener { _, _, event ->
                 if (event != null && event.action == KeyEvent.ACTION_DOWN) {
                     if (event.keyCode == KeyEvent.KEYCODE_DEL && hashtagInput.selectionStart == 0) {
-                        safeAdapterPosition?.let { keyCallbacks.onDeletePressed(it) }
+                        nullableAdapterPosition?.let { keyCallbacks.onDeletePressed(it) }
                     } else if (event.keyCode == KeyEvent.KEYCODE_ENTER) {
-                        safeAdapterPosition?.let { keyCallbacks.onFinishInputPresses(it) }
+                        nullableAdapterPosition?.let { keyCallbacks.onFinishInputPresses(it) }
                     }
                 }
                 false
@@ -149,7 +147,8 @@ class HashtagAdapter(
         holder.apply {
             itemView.onFocusChangeListener = null
             hashtagDelete.setOnClickListener(null)
-            hashtagInput.removeTextChangedListener(textWatchers[adapterPosition])
+            val textWatcher = hashtagInput.tag as? TextWatcher
+            hashtagInput.removeTextChangedListener(textWatcher)
             hashtagInput.setOnKeyListener(null)
         }
     }

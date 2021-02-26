@@ -58,7 +58,6 @@ class ViewModelImpl(
     val isSuggestionsLoading: LiveData<Boolean> get() = isSuggestionsLoadingMutable
 
     private var currentHashtagPosition: Int = 0
-    private val lock: Any = Any()
 
     private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
@@ -92,147 +91,137 @@ class ViewModelImpl(
     }
 
     fun selectActiveHashtag(position: Int) {
-        synchronized(lock) {
-            val previousHashtagPosition = currentHashtagPosition
-            if (previousHashtagPosition != position) {
-                currentHashtagPosition = position
-                val currentHashtag = currentHashtags[position]
-                suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text)
+        val previousHashtagPosition = currentHashtagPosition
+        if (previousHashtagPosition != position) {
+            currentHashtagPosition = position
+            val currentHashtag = currentHashtags[position]
+            suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text)
 
-                val newHashtags = currentHashtags.toMutableList()
-                        .mapIndexed { index, hashtag ->
-                            val newState = when (index) {
-                                currentHashtags.lastIndex -> Hashtag.State.LAST
-                                position -> Hashtag.State.EDIT
-                                else -> Hashtag.State.READY
-                            }
-                            hashtag.copy(text = hashtag.text, state = newState)
+            val newHashtags = currentHashtags.toMutableList()
+                    .mapIndexed { index, hashtag ->
+                        val newState = when (index) {
+                            currentHashtags.lastIndex -> Hashtag.State.LAST
+                            position -> Hashtag.State.EDIT
+                            else -> Hashtag.State.READY
                         }
-                hashtagsMutable.postValue(newHashtags)
-            }
+                        hashtag.copy(text = hashtag.text, state = newState)
+                    }
+            hashtagsMutable.postValue(newHashtags)
         }
     }
 
     fun selectSuggestion(position: Int) {
-        synchronized(lock) {
-            val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
-            val newHashtags: MutableList<Hashtag> = currentHashtags
-                    .mapIndexed { index, hashtag ->
-                        val newText = if (index == currentHashtagPosition) selectedSuggestionText else hashtag.text
-                        hashtag.copy(text = newText, state = Hashtag.State.READY)
+        val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
+        val newHashtags: MutableList<Hashtag> = currentHashtags
+                .mapIndexed { index, hashtag ->
+                    val newText = if (index == currentHashtagPosition) selectedSuggestionText else hashtag.text
+                    hashtag.copy(text = newText, state = Hashtag.State.READY)
+                }
+                .toMutableList()
+                .apply {
+                    val lastIndex = currentHashtags.lastIndex
+                    if (currentHashtagPosition == lastIndex) {
+                        add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                        currentHashtagPosition++
+                    } else {
+                        currentHashtagPosition = lastIndex
+                        set(lastIndex, currentHashtags[lastIndex].copy(shouldGainFocus = SingleEventFlag(true)))
                     }
-                    .toMutableList()
-                    .apply {
-                        val lastIndex = currentHashtags.lastIndex
-                        if (currentHashtagPosition == lastIndex) {
-                            add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
-                            currentHashtagPosition++
-                        } else {
-                            currentHashtagPosition = lastIndex
-                            set(lastIndex, currentHashtags[lastIndex].copy(shouldGainFocus = SingleEventFlag(true)))
-                        }
-                    }
+                }
 
-            suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtags[currentHashtagPosition].text)
-            hashtagsMutable.postValue(newHashtags)
-        }
+        suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtags[currentHashtagPosition].text)
+        hashtagsMutable.postValue(newHashtags)
     }
 
     fun deleteHashtag(position: Int) {
-        synchronized(lock) {
-            if (position < currentHashtagPosition) {
-                currentHashtagPosition--
-            }
-
-            val newHashtags = currentHashtags
-                    .toMutableList()
-                    .apply { removeAt(position) }
-            hashtagsMutable.postValue(newHashtags)
+        if (position < currentHashtagPosition) {
+            currentHashtagPosition--
         }
+
+        val newHashtags = currentHashtags
+                .toMutableList()
+                .apply { removeAt(position) }
+        hashtagsMutable.postValue(newHashtags)
     }
 
     fun deleteFromHashtag(position: Int) {
-        synchronized(lock) {
-            val priorElementPosition = position - 1
-            if (currentHashtags.getOrNull(priorElementPosition) == null) {
-                return
-            }
-
-            currentHashtagPosition = priorElementPosition
-            val newHashtags = currentHashtags
-                    .toMutableList()
-                    .apply {
-                        removeAt(priorElementPosition)
-                    }
-            hashtagsMutable.postValue(newHashtags)
+        val priorElementPosition = position - 1
+        if (currentHashtags.getOrNull(priorElementPosition) == null) {
+            return
         }
+
+        currentHashtagPosition = priorElementPosition
+        val newHashtags = currentHashtags
+                .toMutableList()
+                .apply {
+                    removeAt(priorElementPosition)
+                }
+        hashtagsMutable.postValue(newHashtags)
     }
 
     fun editHashtag(hashtagPosition: Int, before: String, after: String) {
-        synchronized(lock) {
-            currentHashtagPosition = hashtagPosition
-            val newHashtags: List<Hashtag>
-            val input = Input(before = before, after = after)
+        currentHashtagPosition = hashtagPosition
+        val newHashtags: List<Hashtag>
+        val input = Input(before = before, after = after)
 
-            when (val validationResult = validateText(input)) {
-                is HashtagInputValidation.Success -> {
-                    val currentHashtag = currentHashtags[hashtagPosition]
-                    if (after.isEmpty() && currentHashtag.state == Hashtag.State.EDIT) {
-                        /* Delete this element */
-                        newHashtags = currentHashtags
-                                .toMutableList()
-                                .apply {
-                                    removeAt(hashtagPosition)
-                                }
-                        suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text)
-                    } else {
-                        val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
-                        val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
-                        newHashtags = currentHashtags
-                                .toMutableList()
-                                .apply {
-                                    set(hashtagPosition, newHashtag)
-                                }
-                        suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
-                    }
-                }
-                is HashtagInputValidation.HashtagFinished -> {
-                    val correctedHashtag = validationResult.correctedHashtag
-                    val newHashtag = currentHashtags[hashtagPosition].copy(
-                            text = validationResult.correctedHashtag,
-                            state = Hashtag.State.READY,
-                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
-                    )
+        when (val validationResult = validateText(input)) {
+            is HashtagInputValidation.Success -> {
+                val currentHashtag = currentHashtags[hashtagPosition]
+                if (after.isEmpty() && currentHashtag.state == Hashtag.State.EDIT) {
+                    /* Delete this element */
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
-                                set(hashtagPosition, newHashtag)
-                                if (removeTrailingHashtag(last().text).isBlank()) {
-                                    set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
-                                } else {
-                                    add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
-                                }
+                                removeAt(hashtagPosition)
                             }
-                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null)
-                }
-                is HashtagInputValidation.Failure -> {
-                    val correctedHashtag = validationResult.correctedHashtag
+                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text)
+                } else {
                     val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
-                    val newHashtag = currentHashtags[hashtagPosition].copy(
-                            text = validationResult.correctedHashtag,
-                            state = newHashtagState,
-                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
-                    )
+                    val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
                                 set(hashtagPosition, newHashtag)
                             }
-                    errorMutable.postValue(validationResult.reason)
+                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
                 }
-            }.exhaustive
-            hashtagsMutable.postValue(newHashtags)
-        }
+            }
+            is HashtagInputValidation.HashtagFinished -> {
+                val correctedHashtag = validationResult.correctedHashtag
+                val newHashtag = currentHashtags[hashtagPosition].copy(
+                        text = validationResult.correctedHashtag,
+                        state = Hashtag.State.READY,
+                        shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                )
+                newHashtags = currentHashtags
+                        .toMutableList()
+                        .apply {
+                            set(hashtagPosition, newHashtag)
+                            if (removeTrailingHashtag(last().text).isBlank()) {
+                                set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
+                            } else {
+                                add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                            }
+                        }
+                suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null)
+            }
+            is HashtagInputValidation.Failure -> {
+                val correctedHashtag = validationResult.correctedHashtag
+                val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
+                val newHashtag = currentHashtags[hashtagPosition].copy(
+                        text = validationResult.correctedHashtag,
+                        state = newHashtagState,
+                        shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                )
+                newHashtags = currentHashtags
+                        .toMutableList()
+                        .apply {
+                            set(hashtagPosition, newHashtag)
+                        }
+                errorMutable.postValue(validationResult.reason)
+            }
+        }.exhaustive
+        hashtagsMutable.postValue(newHashtags)
     }
 
     private data class Input(

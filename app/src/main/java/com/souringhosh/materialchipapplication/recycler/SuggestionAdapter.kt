@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.souringhosh.materialchipapplication.R
 import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.utils.ui.adapter.DiffCallback
-import com.souringhosh.materialchipapplication.utils.ui.adapter.safeAdapterPosition
+import com.souringhosh.materialchipapplication.utils.ui.adapter.nullableAdapterPosition
 
 class SuggestionAdapter(
         private val onSuggestionClick: (Int) -> Unit
@@ -37,7 +37,7 @@ class SuggestionAdapter(
     override fun onViewAttachedToWindow(holder: SuggestionHolder) {
         super.onViewAttachedToWindow(holder)
         holder.itemView.setOnClickListener {
-            holder.safeAdapterPosition?.let { onSuggestionClick(it) }
+            holder.nullableAdapterPosition?.let { onSuggestionClick(it) }
         }
     }
 

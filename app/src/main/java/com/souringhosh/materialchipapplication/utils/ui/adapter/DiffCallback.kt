@@ -24,9 +24,5 @@ interface ListItem {
     val id: Any
 }
 
-val RecyclerView.ViewHolder.safeAdapterPosition: Int?
-    get() = if (adapterPosition != RecyclerView.NO_POSITION) {
-        adapterPosition
-    } else {
-        null
-    }
+val RecyclerView.ViewHolder.nullableAdapterPosition: Int?
+    get() = adapterPosition.takeIf { it != RecyclerView.NO_POSITION }
