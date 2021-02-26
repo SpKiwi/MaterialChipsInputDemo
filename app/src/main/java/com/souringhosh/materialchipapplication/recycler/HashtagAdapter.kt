@@ -8,6 +8,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -84,6 +85,8 @@ class HashtagAdapter(
 
     /* Map of Position to Hashtag text before change was made */
     private val beforeTexts: MutableMap<Int, String> = mutableMapOf()
+    /* Map of Position to TextWatcher */
+    private val textWatchers: MutableMap<Int, TextWatcher> = mutableMapOf()
 
     override fun onViewAttachedToWindow(holder: HashtagHolder) {
         super.onViewAttachedToWindow(holder)
@@ -101,7 +104,7 @@ class HashtagAdapter(
                 safeAdapterPosition?.let { onHashtagDeleteClick(it) }
             }
             /* Text input */
-            hashtagInput.addTextChangedListener(object : TextWatcher {
+            val textWatcher = object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {}
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
                     if (isTextWatcherEnabled) {
@@ -125,7 +128,9 @@ class HashtagAdapter(
                         }
                     }
                 }
-            })
+            }
+            hashtagInput.addTextChangedListener(textWatcher)
+            textWatchers[adapterPosition] = textWatcher
             /* Keyboard */
             hashtagInput.setOnKeyListener { _, _, event ->
                 if (event != null && event.action == KeyEvent.ACTION_DOWN) {
@@ -145,13 +150,13 @@ class HashtagAdapter(
         holder.apply {
             itemView.onFocusChangeListener = null
             hashtagDelete.setOnClickListener(null)
-            hashtagInput.clearTextChangedListeners()
+            hashtagInput.removeTextChangedListener(textWatchers[adapterPosition])
             hashtagInput.setOnKeyListener(null)
         }
     }
 
     class HashtagHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val hashtagInput: SimpleEditText = itemView.findViewById<SimpleEditText>(R.id.hashtag_text_edit)
+        val hashtagInput: EditText = itemView.findViewById<EditText>(R.id.hashtag_text_edit)
         val hashtagDelete: ImageView = itemView.findViewById<ImageView>(R.id.hashtag_delete_button)
 
         fun bind(hashtag: Hashtag) {
