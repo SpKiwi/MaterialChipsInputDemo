@@ -62,7 +62,11 @@ class ViewModelImpl(
     private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
 
-    init {
+    private fun getHashtagStringList(): List<String> = currentHashtags.map { it.text }
+
+    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = currentHashtags.map { it.text }
+
+    fun start() {
         launch {
             suggestionInteractor.observeSuggestions()
                     .collect {
@@ -79,10 +83,6 @@ class ViewModelImpl(
         }
         suggestionInteractor.getSuggestions(emptyList(), null)
     }
-
-    private fun getHashtagStringList(): List<String> = currentHashtags.map { it.text }
-
-    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = currentHashtags.map { it.text }
 
     fun selectActiveHashtag(position: Int) {
         val previousHashtagPosition = currentHashtagPosition
@@ -218,6 +218,8 @@ class ViewModelImpl(
         hashtagsMutable.postValue(newHashtags)
     }
 
+    fun getTitleInfo(): List<String> = getHashtagStringList().map { removeTrailingHashtag(it) }
+
     private data class Input(
             val before: String,
             val after: String
@@ -250,14 +252,14 @@ class ViewModelImpl(
             }
         }
 
-        input.after.forEachIndexed { index, char ->
-            if (!isCharValid(index, char)) {
-                return HashtagInputValidation.Failure(
-                        HashtagFailureReason.WRONG_SYMBOL,
-                        input.before
-                )
-            }
-        }
+        input.after.withIndex()
+                .find { !isCharValid(it.index, it.value) }
+                ?.let {
+                    return HashtagInputValidation.Failure(
+                            HashtagFailureReason.WRONG_SYMBOL,
+                            input.before
+                    )
+                }
 
         if (formattedInput.length > MAX_HASHTAG_LENGTH) {
             return HashtagInputValidation.Failure(
@@ -269,7 +271,7 @@ class ViewModelImpl(
         return HashtagInputValidation.Success
     }
 
-    private val charValidation: (Char) -> Boolean = { it.isLetterOrDigit() || it == '_' }
+    private val charValidation: (Char) -> Boolean = { it.isLetterOrDigit() || it == '_' || it == '-' }
     private fun isCharValid(index: Int, char: Char): Boolean {
         return if (index == 0) {
             charValidation(char) || char == '#'
@@ -301,7 +303,14 @@ class ViewModelImpl(
          **/
         private const val MAX_HASHTAG_LENGTH = 50
         private const val MIN_HASHTAG_LENGTH = 1
-        private val hashtagEndChars: List<Char> = listOf(13.toChar(), ' ', '#')
+        private const val CARRIAGE_RETURN = 13
+        private const val LINE_FEED = 10
+        private val hashtagEndChars: List<Char> = listOf(
+                CARRIAGE_RETURN.toChar(),
+                LINE_FEED.toChar(),
+                ' ',
+                '#'
+        )
     }
 }
 
