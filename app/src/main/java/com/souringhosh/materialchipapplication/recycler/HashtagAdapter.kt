@@ -27,7 +27,7 @@ class HashtagAdapter(
         private val keyCallbacks: KeyCallbacks
 ) : RecyclerView.Adapter<HashtagAdapter.HashtagHolder>() {
 
-    var hashtags: List<Hashtag> = emptyList()
+    var items: List<Hashtag> = emptyList()
         set(value) {
             val diffResult: DiffUtil.DiffResult = DiffUtil.calculateDiff(HashtagDiffCallback(field, value))
             field = value
@@ -42,17 +42,17 @@ class HashtagAdapter(
                     LayoutInflater.from(parent.context).inflate(R.layout.hashtag_item, parent, false)
             )
 
-    override fun getItemCount(): Int = hashtags.size
+    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: HashtagHolder, position: Int) {
-        val hashtag = hashtags[position]
+        val hashtag = items[position]
         preventTextNotify {
             holder.bind(hashtag)
         }
     }
 
     override fun onBindViewHolder(holder: HashtagHolder, position: Int, payloads: MutableList<Any>) {
-        val hashtag = hashtags[position]
+        val hashtag = items[position]
         if (payloads.isEmpty()) {
             super.onBindViewHolder(holder, position, payloads)
         } else {
@@ -75,7 +75,6 @@ class HashtagAdapter(
 
     private var isTextWatcherEnabled: Boolean = true
 
-    @Synchronized
     private fun preventTextNotify(block: () -> Unit) {
         isTextWatcherEnabled = false
         block()

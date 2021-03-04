@@ -8,26 +8,28 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.timer
+import kotlin.random.Random
 
 interface SuggestionRepository {
 
-    suspend fun getSuggestions(): List<Suggestion>
+    suspend fun getSuggestions(search: String): SearchResultModel
 
 }
 
 class MockSuggestionRepository : SuggestionRepository {
 
-    override suspend fun getSuggestions(): List<Suggestion> {
+    override suspend fun getSuggestions(search: String): SearchResultModel {
         delay(500)
-        return mockData
-                .shuffled()
-                .take(10)
-//        return Single.timer(500, TimeUnit.MILLISECONDS, Schedulers.io())
-//                .map {
-//                    mockData
-//                            .shuffled()
-//                            .take(10)
-//                }
+        val items = mockData.shuffled()
+        val isResponseValid = bannedList.any {
+            search.contains(it)
+        }
+        return SearchResultModel(
+                id = Random.nextInt().toString(),
+                itemsCount = items.size,
+                items = items,
+                isResponseValid = isResponseValid
+        )
     }
 
     private val mockData: List<Suggestion> = listOf(
@@ -53,6 +55,15 @@ class MockSuggestionRepository : SuggestionRepository {
             Suggestion("belarus"),
             Suggestion("minsk")
     )
+
+    private val bannedList: List<String> = listOf(
+            "fuck",
+            "fag",
+            "bitch",
+            "ass",
+            "sex",
+            "boob"
+    )
 }
 
 inline class Suggestion(
@@ -60,3 +71,10 @@ inline class Suggestion(
 ) : ListItem {
     override val id: Any get() = value
 }
+
+data class SearchResultModel(
+        val id: String,
+        val itemsCount: Int,
+        val items: List<Suggestion>,
+        val isResponseValid: Boolean
+)
