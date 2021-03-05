@@ -1,8 +1,8 @@
 package com.souringhosh.materialchipapplication
 
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.asFlow
 import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
 import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
@@ -14,25 +14,11 @@ import kotlinx.coroutines.flow.collect
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
 
-//interface ViewModel {
-//    val hashtags: LiveData<List<Hashtag>>
-//    val error: LiveData<HashtagFailureReason?>
-//    val suggestions: LiveData<List<Suggestion>>
-//    val isSuggestionsLoading: LiveData<Boolean>
-//
-//    fun selectActiveHashtag(position: Int)
-//    fun selectSuggestion(position: Int)
-//
-//    fun deleteHashtag(position: Int)
-//    fun deleteFromHashtag(position: Int)
-//    fun editHashtag(hashtagPosition: Int, before: String, after: String)
-//}
-
 @ExperimentalCoroutinesApi
 @FlowPreview
 class ViewModelImpl(
         private val suggestionInteractor: HashtagSuggestionInteractor
-) : /*ViewModel, */CoroutineScope {
+) : CoroutineScope {
 
     override val coroutineContext: CoroutineContext = Dispatchers.Main
 
@@ -155,8 +141,6 @@ class ViewModelImpl(
 
     fun editHashtag(hashtagPosition: Int, before: String, after: String) {
         currentHashtagPosition = hashtagPosition
-//        val _currentHashtag = currentHashtags[hashtagPosition] // todo remove this
-//        suggestionInteractor.checkIsAppropriate(_currentHashtag.id, _currentHashtag.text) // todo remove this
 
         val newHashtags: List<Hashtag>
         val input = Input(before = before, after = after)
@@ -194,7 +178,7 @@ class ViewModelImpl(
                         .toMutableList()
                         .apply {
                             set(hashtagPosition, newHashtag)
-                            if (removeTrailingHashtag(last().text).isBlank()) {
+                            if (last().text.removePrefix("#").isBlank()) {
                                 set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
                             } else {
                                 add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
@@ -221,7 +205,7 @@ class ViewModelImpl(
         hashtagsMutable.postValue(newHashtags)
     }
 
-    fun getTitleInfo(): List<String> = getHashtagStringList().map { removeTrailingHashtag(it) }
+    fun getTitleInfo(): List<String> = getHashtagStringList().map { it.removePrefix("#") }
 
     private data class Input(
             val before: String,
@@ -236,7 +220,7 @@ class ViewModelImpl(
             return HashtagInputValidation.Success
         }
 
-        val formattedInput = removeTrailingHashtag(input.after)
+        val formattedInput = input.after.removePrefix("#")
         if (formattedInput.isEmpty()) {
             return HashtagInputValidation.Success
         }
@@ -280,14 +264,6 @@ class ViewModelImpl(
             charValidation(char) || char == '#'
         } else {
             charValidation(char)
-        }
-    }
-
-    private fun removeTrailingHashtag(hashtagText: String): String {
-        return if (hashtagText.startsWith('#')) {
-            hashtagText.replaceFirst("#", "")
-        } else {
-            hashtagText
         }
     }
 
