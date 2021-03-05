@@ -12,52 +12,85 @@ import kotlinx.coroutines.flow.*
 class HashtagSuggestionInteractor(
         private val suggestionRepository: SuggestionRepository
 ) {
-    private val suggestionChannel = BroadcastChannel<String>(Channel.CONFLATED)
-    private val loadingChannel = BroadcastChannel<State>(Channel.CONFLATED)
+    /**
+     * This channel is for local hashtag id and the corresponding hashtag value
+     **/
+    private val suggestionChannel = BroadcastChannel<Pair<Long, String>>(Channel.CONFLATED)
+    private val inappropriateWordsChannel = BroadcastChannel<Set<String>>(Channel.CONFLATED)
+
+    @Volatile
     private var currentHashtags: List<String> = emptyList()
 
-    fun observeSuggestions(): Flow<State> {
-        val filteredSuggestionsFlow: Flow<State> = suggestionChannel
-                .asFlow()
-                .debounce(SEARCH_DEBOUNCE)
-                .flatMapLatest { suggestion ->
-                    flow<State> {
-                        val suggestions = suggestionRepository.getSuggestions(suggestion)
-                                .items
-                                .asSequence()
-                                .map { it.value }
-                                .filter { !currentHashtags.contains(it) }
-                                .take(SUGGESTION_LIST_SIZE)
-                                .map { Suggestion("#$it") }
-                                .toList()
+    @Volatile
+    private var lastSearchId: Long = -1
 
-                        emit(State.Loaded(suggestions))
-                    }
-                            .catch {
-                                emit(State.Loaded(emptyList()))
-                            }
+    fun observeInappropriateWords(): Flow<Set<String>> {
+        return inappropriateWordsChannel
+                .asFlow()
+                .runningReduce { accumulator, value ->
+                    accumulator
+                            .toMutableSet()
+                            .apply { addAll(value) }
                 }
-        val loadingFlow: Flow<State> = loadingChannel
-                .asFlow()
+    }
 
-        return flowOf(loadingFlow, filteredSuggestionsFlow).flattenMerge()
+    fun observeSuggestions(): Flow<List<Suggestion>> {
+        return suggestionChannel
+            .asFlow()
+            .groupBy { (id, _) -> id }
+            .flatMapMerge { groupedFlow ->
+                groupedFlow
+                    .debounce(SEARCH_DEBOUNCE)
+                    .flatMapLatest { (hashtagId, hashtagText) ->
+                        val uniqueSearch = flow {
+                            val searchResult = suggestionRepository.getSuggestions(hashtagText)
+                            if (!searchResult.isResponseValid) {
+                                Log.d("lol", "wrong word for $hashtagId")
+                                inappropriateWordsChannel.offer(setOf(hashtagText))
+                            }
+
+                            if (hashtagId == lastSearchId) {
+                                Log.d("lol", "emit suggestions for $hashtagId")
+                                val suggestions = searchResult
+                                   .items
+                                   .asSequence()
+                                   .map { it.value }
+                                   .filter { !currentHashtags.contains(it) }
+                                   .take(SUGGESTION_LIST_SIZE)
+                                   .map { Suggestion("#$it") }
+                                   .toList()
+
+                                emit(suggestions)
+                            }
+                        }
+
+                        uniqueSearch.retry {
+                            delay(RETRY_SEARCH_AFTER)
+                            true
+                        }
+                    }
+            }
     }
 
     @Synchronized
-    fun getSuggestions(currentHashtags: List<String>, search: String?) {
-        val currentSearch = search ?: ""
-        loadingChannel.offer(State.Loading)
-        suggestionChannel.offer(currentSearch)
+    fun getSuggestions(
+            currentHashtags: List<String>,
+            search: String?,
+            localId: Long?
+    ) {
+        val currentSearch: String = search ?: ""
+        val currentHashtagId: Long = localId ?: -1
+
+        this.currentHashtags = currentHashtags
+        this.lastSearchId = currentHashtagId
+
+        suggestionChannel.offer(currentHashtagId to currentSearch)
     }
 
     companion object {
         private const val SEARCH_DEBOUNCE = 1_000L
         private const val SUGGESTION_LIST_SIZE = 10
-    }
-
-    sealed class State {
-        object Loading : State()
-        data class Loaded(val suggestions: List<Suggestion>) : State()
+        private const val RETRY_SEARCH_AFTER = 1_000L
     }
 
 }

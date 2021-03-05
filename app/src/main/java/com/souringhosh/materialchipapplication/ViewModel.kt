@@ -1,5 +1,6 @@
 package com.souringhosh.materialchipapplication
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.souringhosh.materialchipapplication.repository.Suggestion
@@ -70,18 +71,16 @@ class ViewModelImpl(
         launch {
             suggestionInteractor.observeSuggestions()
                     .collect {
-                        when (it) {
-                            is HashtagSuggestionInteractor.State.Loading -> {
-                                isSuggestionsLoadingMutable.postValue(true)
-                            }
-                            is HashtagSuggestionInteractor.State.Loaded -> {
-                                isSuggestionsLoadingMutable.postValue(false)
-                                suggestionsMutable.postValue(it.suggestions)
-                            }
-                        }
+                        suggestionsMutable.postValue(it)
                     }
         }
-        suggestionInteractor.getSuggestions(emptyList(), null)
+        launch {
+            suggestionInteractor.observeInappropriateWords()
+                    .collect {
+                        println(it)
+                    }
+        }
+        suggestionInteractor.getSuggestions(emptyList(), null, null)
     }
 
     fun selectActiveHashtag(position: Int) {
@@ -89,7 +88,7 @@ class ViewModelImpl(
         if (previousHashtagPosition != position) {
             currentHashtagPosition = position
             val currentHashtag = currentHashtags[position]
-            suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text)
+            suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text, currentHashtag.id)
 
             val newHashtags = currentHashtags.toMutableList()
                     .mapIndexed { index, hashtag ->
@@ -123,7 +122,8 @@ class ViewModelImpl(
                     }
                 }
 
-        suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtags[currentHashtagPosition].text)
+        val newHashtag = newHashtags[currentHashtagPosition]
+        suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtag.text, newHashtag.id)
         hashtagsMutable.postValue(newHashtags)
     }
 
@@ -155,6 +155,9 @@ class ViewModelImpl(
 
     fun editHashtag(hashtagPosition: Int, before: String, after: String) {
         currentHashtagPosition = hashtagPosition
+//        val _currentHashtag = currentHashtags[hashtagPosition] // todo remove this
+//        suggestionInteractor.checkIsAppropriate(_currentHashtag.id, _currentHashtag.text) // todo remove this
+
         val newHashtags: List<Hashtag>
         val input = Input(before = before, after = after)
 
@@ -168,7 +171,7 @@ class ViewModelImpl(
                             .apply {
                                 removeAt(hashtagPosition)
                             }
-                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text)
+                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text, newHashtags.last().id)
                 } else {
                     val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
                     val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
@@ -177,7 +180,7 @@ class ViewModelImpl(
                             .apply {
                                 set(hashtagPosition, newHashtag)
                             }
-                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text)
+                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text, newHashtag.id)
                 }
             }
             is HashtagInputValidation.HashtagFinished -> {
@@ -197,7 +200,7 @@ class ViewModelImpl(
                                 add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
                             }
                         }
-                suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null)
+                suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null, null)
             }
             is HashtagInputValidation.Failure -> {
                 val correctedHashtag = validationResult.correctedHashtag
@@ -316,8 +319,8 @@ class ViewModelImpl(
 
 enum class HashtagFailureReason {
     MAX_SIZE_EXCEEDED,
-    WRONG_SYMBOL, // todo move to strings "_Special symbols not allowed"
-    INAPPROPRIATE_LANGUAGE // todo move to strings "_Inappropriate language not allowed"
+    WRONG_SYMBOL,
+    INAPPROPRIATE_LANGUAGE
 }
 
 data class Hashtag(
@@ -337,7 +340,7 @@ data class Hashtag(
         /**
          * Hashtag which is finished and not being edited
          **/
-        READY,
+        READY, // todo add substates //
 
         /**
          * Hashtag that is selected and can be deleted by pressing back again
