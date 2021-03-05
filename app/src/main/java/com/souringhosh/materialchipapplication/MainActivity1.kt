@@ -55,18 +55,19 @@ class MainActivity1 : AppCompatActivity() {
             addOnScrollListener(object : RecyclerView.OnScrollListener() { //
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                     currentFocus?.let {
-                        (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0)
+                        (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0) // todo check this on SAMSUNG
                     }
                 }
             })
         }
 
         viewModel.hashtags.observe(this, Observer { hashtags ->
-            hashtagAdapter.hashtags = hashtags
+            hashtagAdapter.items = hashtags
             val readyHashtagsSize = hashtags.count { it.state == Hashtag.State.READY }
             if (readyHashtagsSize == hashtags.size - 1) {
                 hashtagRecycler.scrollToPosition(hashtags.lastIndex)
             }
+            hashtagRecycler.focusedChild
         })
 
         viewModel.suggestions.observe(this, Observer {
@@ -80,6 +81,7 @@ class MainActivity1 : AppCompatActivity() {
                 hashtagError.text = it.name
             }
         })
+        viewModel.start()
     }
 
 }

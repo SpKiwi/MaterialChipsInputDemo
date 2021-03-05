@@ -1,15 +1,11 @@
 package com.souringhosh.materialchipapplication.repository
 
-import io.reactivex.Observable
-import io.reactivex.subjects.BehaviorSubject
-import io.reactivex.subjects.PublishSubject
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
+import android.util.Log
+import com.souringhosh.materialchipapplication.utils.extensions.groupBy
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
-import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 @ExperimentalCoroutinesApi
 @FlowPreview
@@ -27,9 +23,10 @@ class HashtagSuggestionInteractor(
                 .flatMapLatest { suggestion ->
                     flow<State> {
                         val suggestions = suggestionRepository.getSuggestions(suggestion)
-                                .items.asSequence()
-                                .map { it }
-                                .filter { !currentHashtags.contains(it.value) }
+                                .items
+                                .asSequence()
+                                .map { it.value }
+                                .filter { !currentHashtags.contains(it) }
                                 .take(SUGGESTION_LIST_SIZE)
                                 .map { Suggestion("#$it") }
                                 .toList()

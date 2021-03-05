@@ -21,7 +21,7 @@ class MockSuggestionRepository : SuggestionRepository {
     override suspend fun getSuggestions(search: String): SearchResultModel {
         delay(500)
         val items = mockData.shuffled()
-        val isResponseValid = bannedList.any {
+        val isResponseValid = !bannedList.any {
             search.contains(it)
         }
         return SearchResultModel(
