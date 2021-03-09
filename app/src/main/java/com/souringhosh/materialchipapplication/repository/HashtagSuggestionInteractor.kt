@@ -1,6 +1,5 @@
 package com.souringhosh.materialchipapplication.repository
 
-import android.util.Log
 import com.souringhosh.materialchipapplication.utils.extensions.groupBy
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
@@ -18,10 +17,7 @@ class HashtagSuggestionInteractor(
     private val suggestionChannel = BroadcastChannel<Pair<Long, String>>(Channel.CONFLATED)
     private val inappropriateWordsChannel = BroadcastChannel<Set<String>>(Channel.CONFLATED)
 
-    @Volatile
     private var currentHashtags: List<String> = emptyList()
-
-    @Volatile
     private var lastSearchId: Long = -1
 
     fun observeInappropriateWords(): Flow<Set<String>> {
@@ -45,12 +41,10 @@ class HashtagSuggestionInteractor(
                         val uniqueSearch = flow {
                             val searchResult = suggestionRepository.getSuggestions(hashtagText)
                             if (!searchResult.isResponseValid) {
-                                Log.d("lol", "wrong word for $hashtagId")
                                 inappropriateWordsChannel.offer(setOf(hashtagText))
                             }
 
                             if (hashtagId == lastSearchId) {
-                                Log.d("lol", "emit suggestions for $hashtagId")
                                 val suggestions = searchResult
                                    .items
                                    .asSequence()
@@ -78,7 +72,7 @@ class HashtagSuggestionInteractor(
             search: String?,
             localId: Long?
     ) {
-        val currentSearch: String = search ?: ""
+        val currentSearch: String = search?.removePrefix("#") ?: ""
         val currentHashtagId: Long = localId ?: -1
 
         this.currentHashtags = currentHashtags

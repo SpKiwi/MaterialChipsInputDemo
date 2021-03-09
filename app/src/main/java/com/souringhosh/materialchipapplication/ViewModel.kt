@@ -2,15 +2,17 @@ package com.souringhosh.materialchipapplication
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.asFlow
 import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
 import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
+import com.souringhosh.materialchipapplication.utils.extensions.asFlow
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
 import com.souringhosh.materialchipapplication.utils.helpers.startWith
 import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.onEach
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
 
@@ -35,6 +37,7 @@ class ViewModelImpl(
     )
     val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
+    private val typingErrorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData<HashtagFailureReason?>().startWith(null)
     private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
     val error: LiveData<HashtagFailureReason?> get() = errorMutable
 
@@ -61,9 +64,34 @@ class ViewModelImpl(
                     }
         }
         launch {
-            suggestionInteractor.observeInappropriateWords()
-                    .collect {
-                        println(it)
+            /**
+             * All input-related errors will be here, but for now we only show inappropriate word-connected errors
+             **/
+            hashtags.asFlow()
+                    .onEach {
+                        println()
+                    }
+                    .combine(suggestionInteractor.observeInappropriateWords()) { hashtags, inappropriateWords ->
+                        val containsInappropriateWords = hashtags.map { it.text }
+                                .any { hashtag ->
+                                    inappropriateWords.any { word ->
+                                        hashtag.contains(word)
+                                    }
+                                }
+                        containsInappropriateWords
+                    }
+                    .combine(typingErrorMutable.asFlow()) { containsInappropriateWords, typingError ->
+                        containsInappropriateWords
+                        /**
+                         * All typing errors can be handled here if needed
+                         **/
+                    }
+                    .collect { containsInappropriateWords ->
+                        if (containsInappropriateWords) {
+                            errorMutable.postValue(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
+                        } else {
+                            errorMutable.postValue(null)
+                        }
                     }
         }
         suggestionInteractor.getSuggestions(emptyList(), null, null)
@@ -199,7 +227,7 @@ class ViewModelImpl(
                         .apply {
                             set(hashtagPosition, newHashtag)
                         }
-                errorMutable.postValue(validationResult.reason)
+                typingErrorMutable.postValue(validationResult.reason)
             }
         }.exhaustive
         hashtagsMutable.postValue(newHashtags)
