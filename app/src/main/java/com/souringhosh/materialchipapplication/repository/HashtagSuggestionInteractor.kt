@@ -23,6 +23,7 @@ class HashtagSuggestionInteractor(
     fun observeInappropriateWords(): Flow<Set<String>> {
         return inappropriateWordsChannel
                 .asFlow()
+                .onStart { emit(emptySet()) }
                 .runningReduce { accumulator, value ->
                     accumulator
                             .toMutableSet()
@@ -49,7 +50,7 @@ class HashtagSuggestionInteractor(
                                    .items
                                    .asSequence()
                                    .map { it.value }
-                                   .filter { !currentHashtags.contains(it) }
+                                   .filter { !currentHashtags.contains(it) && it.isNotEmpty() }
                                    .take(SUGGESTION_LIST_SIZE)
                                    .map { Suggestion("#$it") }
                                    .toList()

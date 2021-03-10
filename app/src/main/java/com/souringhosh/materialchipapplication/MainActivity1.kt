@@ -2,12 +2,14 @@ package com.souringhosh.materialchipapplication
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.SCROLL_STATE_DRAGGING
 import com.souringhosh.materialchipapplication.recycler.HashtagAdapter
 import com.souringhosh.materialchipapplication.recycler.SuggestionAdapter
 import com.souringhosh.materialchipapplication.repository.MockSuggestionRepository
@@ -52,10 +54,12 @@ class MainActivity1 : AppCompatActivity() {
         hashtagRecycler.apply {
             adapter = hashtagAdapter
             layoutManager = LinearLayoutManager(this@MainActivity1, LinearLayoutManager.HORIZONTAL, false)
-            addOnScrollListener(object : RecyclerView.OnScrollListener() { //
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
                 override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                    currentFocus?.let {
-                        (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0) // todo check this on SAMSUNG
+                    if (newState == SCROLL_STATE_DRAGGING) {
+                        currentFocus?.let {
+                            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0)
+                        }
                     }
                 }
             })
@@ -78,7 +82,7 @@ class MainActivity1 : AppCompatActivity() {
                 hashtagError.visibility = View.INVISIBLE
             } else {
                 hashtagError.visibility = View.VISIBLE
-                hashtagError.text = it.name
+                hashtagError.text = it.toString()
             }
         })
         viewModel.start()

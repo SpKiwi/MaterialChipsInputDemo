@@ -34,26 +34,26 @@ class MockSuggestionRepository : SuggestionRepository {
 
     private val mockData: List<Suggestion> = listOf(
             Suggestion("music"),
-            Suggestion("songs"),
-            Suggestion("lifestyle"),
-            Suggestion("life"),
-            Suggestion("swag"),
-            Suggestion("guitar"),
-            Suggestion("hobby"),
-            Suggestion("fashion"),
-            Suggestion("lol"),
-            Suggestion("cats"),
-            Suggestion("dogs"),
-            Suggestion("cute"),
-            Suggestion("like4like"),
-            Suggestion("_no_1_"),
-            Suggestion("null"),
-            Suggestion("kitty"),
-            Suggestion("kitten"),
-            Suggestion("mlp"),
-            Suggestion("freedom"),
-            Suggestion("belarus"),
-            Suggestion("minsk")
+            Suggestion("songs")
+//            Suggestion("lifestyle"),
+//            Suggestion("life"),
+//            Suggestion("swag"),
+//            Suggestion("guitar"),
+//            Suggestion("hobby"),
+//            Suggestion("fashion"),
+//            Suggestion("lol"),
+//            Suggestion("cats"),
+//            Suggestion("dogs"),
+//            Suggestion("cute"),
+//            Suggestion("like4like"),
+//            Suggestion("_no_1_"),
+//            Suggestion("null"),
+//            Suggestion("kitty"),
+//            Suggestion("kitten"),
+//            Suggestion("mlp"),
+//            Suggestion("freedom"),
+//            Suggestion("belarus"),
+//            Suggestion("minsk")
     )
 
     private val bannedList: List<String> = listOf(

@@ -6,12 +6,22 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <View
+        android:id="@+id/dummyView"
+        android:background="@color/colorPrimary"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_width="100dp"
+        android:layout_height="100dp" />
+
     <androidx.recyclerview.widget.RecyclerView
+        android:layout_marginStart="8dp"
         android:id="@+id/hashtagRecycler"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        android:nestedScrollingEnabled="false"
+        app:layout_constraintStart_toEndOf="@id/dummyView"
         app:layout_constraintTop_toTopOf="parent"
         tools:itemCount="4"
         tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
@@ -35,7 +45,7 @@
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toStartOf="@id/hashtagRecycler"
         app:layout_constraintTop_toBottomOf="@id/hashtagError"
         tools:itemCount="5"
         tools:listitem="@layout/suggestion" />

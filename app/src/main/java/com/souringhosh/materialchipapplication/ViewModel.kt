@@ -38,8 +38,8 @@ class ViewModelImpl(
     val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
     private val typingErrorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData<HashtagFailureReason?>().startWith(null)
-    private val errorMutable: MutableLiveData<HashtagFailureReason?> = MutableLiveData()
-    val error: LiveData<HashtagFailureReason?> get() = errorMutable
+    private val errorMutable: MutableLiveData<List<HashtagFailureReason>> = MutableLiveData()
+    val error: LiveData<List<HashtagFailureReason>> get() = errorMutable
 
     private val suggestionsMutable: MutableLiveData<List<Suggestion>> = MutableLiveData<List<Suggestion>>().startWith(emptyList())
     val suggestions: LiveData<List<Suggestion>> get() = suggestionsMutable
@@ -48,6 +48,7 @@ class ViewModelImpl(
     val isSuggestionsLoading: LiveData<Boolean> get() = isSuggestionsLoadingMutable
 
     private var currentHashtagPosition: Int = 0
+    private val maxHashtagCount = 5
 
     private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
@@ -68,9 +69,6 @@ class ViewModelImpl(
              * All input-related errors will be here, but for now we only show inappropriate word-connected errors
              **/
             hashtags.asFlow()
-                    .onEach {
-                        println()
-                    }
                     .combine(suggestionInteractor.observeInappropriateWords()) { hashtags, inappropriateWords ->
                         val containsInappropriateWords = hashtags.map { it.text }
                                 .any { hashtag ->
@@ -78,20 +76,24 @@ class ViewModelImpl(
                                         hashtag.contains(word)
                                     }
                                 }
-                        containsInappropriateWords
+                        containsInappropriateWords to hashtags.size
                     }
-                    .combine(typingErrorMutable.asFlow()) { containsInappropriateWords, typingError ->
-                        containsInappropriateWords
+                    .combine(typingErrorMutable.asFlow()) { (containsInappropriateWords, hashtagsSize), typingError ->
+                        containsInappropriateWords to hashtagsSize
                         /**
                          * All typing errors can be handled here if needed
                          **/
                     }
-                    .collect { containsInappropriateWords ->
-                        if (containsInappropriateWords) {
-                            errorMutable.postValue(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
-                        } else {
-                            errorMutable.postValue(null)
-                        }
+                        .collect { (containsInappropriateWords, hashtagsSize) ->
+                            val errors = mutableListOf<HashtagFailureReason>().apply {
+                                if (containsInappropriateWords) {
+                                    add(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
+                                }
+                                if (hashtagsSize >= maxHashtagCount) {
+                                    add(HashtagFailureReason.MAX_HASHTAGS_EXCEEDED)
+                                }
+                            }
+                            errorMutable.postValue(errors)
                     }
         }
         suggestionInteractor.getSuggestions(emptyList(), null, null)
@@ -197,21 +199,34 @@ class ViewModelImpl(
             }
             is HashtagInputValidation.HashtagFinished -> {
                 val correctedHashtag = validationResult.correctedHashtag
-                val newHashtag = currentHashtags[hashtagPosition].copy(
-                        text = validationResult.correctedHashtag,
-                        state = Hashtag.State.READY,
-                        shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
-                )
-                newHashtags = currentHashtags
-                        .toMutableList()
-                        .apply {
-                            set(hashtagPosition, newHashtag)
-                            if (last().text.removePrefix("#").isBlank()) {
-                                set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
-                            } else {
-                                add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                if (currentHashtags.size >= maxHashtagCount) {
+                    val newHashtag = currentHashtags[hashtagPosition].copy(
+                            text = validationResult.correctedHashtag,
+                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                    )
+                    newHashtags = currentHashtags
+                            .toMutableList()
+                            .apply {
+                                set(hashtagPosition, newHashtag)
                             }
-                        }
+                } else {
+                    val newHashtag = currentHashtags[hashtagPosition].copy(
+                            text = validationResult.correctedHashtag,
+                            state = Hashtag.State.READY,
+                            shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
+                    )
+                    newHashtags = currentHashtags
+                            .toMutableList()
+                            .apply {
+                                set(hashtagPosition, newHashtag)
+                                if (last().text.removePrefix("#").isBlank()) {
+                                    set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
+                                } else {
+                                    add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                                }
+                            }
+                }
+                currentHashtagPosition = newHashtags.lastIndex
                 suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null, null)
             }
             is HashtagInputValidation.Failure -> {
@@ -312,6 +327,7 @@ class ViewModelImpl(
         private const val MIN_HASHTAG_LENGTH = 1
         private const val CARRIAGE_RETURN = 13
         private const val LINE_FEED = 10
+        private const val MAX_HASHTAG_COUNT = 7
         private val hashtagEndChars: List<Char> = listOf(
                 CARRIAGE_RETURN.toChar(),
                 LINE_FEED.toChar(),
@@ -323,6 +339,7 @@ class ViewModelImpl(
 
 enum class HashtagFailureReason {
     MAX_SIZE_EXCEEDED,
+    MAX_HASHTAGS_EXCEEDED,
     WRONG_SYMBOL,
     INAPPROPRIATE_LANGUAGE
 }
@@ -344,7 +361,7 @@ data class Hashtag(
         /**
          * Hashtag which is finished and not being edited
          **/
-        READY, // todo add substates //
+        READY,
 
         /**
          * Hashtag that is selected and can be deleted by pressing back again
