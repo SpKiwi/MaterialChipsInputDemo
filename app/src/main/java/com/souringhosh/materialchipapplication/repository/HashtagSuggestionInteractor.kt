@@ -17,7 +17,6 @@ class HashtagSuggestionInteractor(
     private val suggestionChannel = BroadcastChannel<Pair<Long, String>>(Channel.CONFLATED)
     private val inappropriateWordsChannel = BroadcastChannel<Set<String>>(Channel.CONFLATED)
 
-    private var currentHashtags: List<String> = emptyList()
     private var lastSearchId: Long = -1
 
     fun observeInappropriateWords(): Flow<Set<String>> {
@@ -31,7 +30,7 @@ class HashtagSuggestionInteractor(
                 }
     }
 
-    fun observeSuggestions(): Flow<List<Suggestion>> {
+    fun observeSuggestions(): Flow<List<String>> {
         return suggestionChannel
             .asFlow()
             .groupBy { (id, _) -> id }
@@ -48,12 +47,7 @@ class HashtagSuggestionInteractor(
                             if (hashtagId == lastSearchId) {
                                 val suggestions = searchResult
                                    .items
-                                   .asSequence()
                                    .map { it.value }
-                                   .filter { !currentHashtags.contains(it) && it.isNotEmpty() }
-                                   .take(SUGGESTION_LIST_SIZE)
-                                   .map { Suggestion("#$it") }
-                                   .toList()
 
                                 emit(suggestions)
                             }
@@ -69,14 +63,12 @@ class HashtagSuggestionInteractor(
 
     @Synchronized
     fun getSuggestions(
-            currentHashtags: List<String>,
             search: String?,
             localId: Long?
     ) {
         val currentSearch: String = search?.removePrefix("#") ?: ""
         val currentHashtagId: Long = localId ?: -1
 
-        this.currentHashtags = currentHashtags
         this.lastSearchId = currentHashtagId
 
         suggestionChannel.offer(currentHashtagId to currentSearch)
@@ -84,7 +76,6 @@ class HashtagSuggestionInteractor(
 
     companion object {
         private const val SEARCH_DEBOUNCE = 1_000L
-        private const val SUGGESTION_LIST_SIZE = 10
         private const val RETRY_SEARCH_AFTER = 1_000L
     }
 

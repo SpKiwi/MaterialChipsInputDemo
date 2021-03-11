@@ -46,6 +46,12 @@ class MainActivity1 : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main1)
+        parentView.setOnTouchListener { v, event ->
+            currentFocus?.let {
+                (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.hideSoftInputFromWindow(it.windowToken, 0)
+            }
+            true
+        }
 
         suggestionRecycler.apply {
             adapter = suggestionAdapter

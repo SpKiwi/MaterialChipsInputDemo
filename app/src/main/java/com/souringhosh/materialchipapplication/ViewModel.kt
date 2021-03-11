@@ -45,7 +45,6 @@ class ViewModelImpl(
     val suggestions: LiveData<List<Suggestion>> get() = suggestionsMutable
 
     private val isSuggestionsLoadingMutable: MutableLiveData<Boolean> = MutableLiveData<Boolean>().startWith(true)
-    val isSuggestionsLoading: LiveData<Boolean> get() = isSuggestionsLoadingMutable
 
     private var currentHashtagPosition: Int = 0
     private val maxHashtagCount = 5
@@ -55,11 +54,20 @@ class ViewModelImpl(
 
     private fun getHashtagStringList(): List<String> = currentHashtags.map { it.text }
 
-    private fun getHashtagStringList(currentHashtags: List<Hashtag>): List<String> = currentHashtags.map { it.text }
-
     fun start() {
         launch {
-            suggestionInteractor.observeSuggestions()
+            hashtags.asFlow()
+                    .combine(suggestionInteractor.observeSuggestions()) { hashtags, suggestions ->
+                        val hashtagsText = hashtags.map { hashtag -> hashtag.text.removePrefix("#") }
+                        suggestions
+                                .asSequence()
+                                .filter { suggestion ->
+                                    !hashtagsText.contains(suggestion) && suggestion.isNotEmpty()
+                                }
+                                .take(SUGGESTION_LIST_SIZE)
+                                .map { Suggestion("#$it") }
+                                .toList()
+                    }
                     .collect {
                         suggestionsMutable.postValue(it)
                     }
@@ -84,19 +92,19 @@ class ViewModelImpl(
                          * All typing errors can be handled here if needed
                          **/
                     }
-                        .collect { (containsInappropriateWords, hashtagsSize) ->
-                            val errors = mutableListOf<HashtagFailureReason>().apply {
-                                if (containsInappropriateWords) {
-                                    add(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
-                                }
-                                if (hashtagsSize >= maxHashtagCount) {
-                                    add(HashtagFailureReason.MAX_HASHTAGS_EXCEEDED)
-                                }
+                    .collect { (containsInappropriateWords, hashtagsSize) ->
+                        val errors = mutableListOf<HashtagFailureReason>().apply {
+                            if (containsInappropriateWords) {
+                                add(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
                             }
-                            errorMutable.postValue(errors)
+                            if (hashtagsSize >= maxHashtagCount) {
+                                add(HashtagFailureReason.MAX_HASHTAGS_EXCEEDED)
+                            }
+                        }
+                        errorMutable.postValue(errors)
                     }
         }
-        suggestionInteractor.getSuggestions(emptyList(), null, null)
+        suggestionInteractor.getSuggestions(null, null)
     }
 
     fun selectActiveHashtag(position: Int) {
@@ -104,7 +112,7 @@ class ViewModelImpl(
         if (previousHashtagPosition != position) {
             currentHashtagPosition = position
             val currentHashtag = currentHashtags[position]
-            suggestionInteractor.getSuggestions(getHashtagStringList(), currentHashtag.text, currentHashtag.id)
+            suggestionInteractor.getSuggestions(currentHashtag.text, currentHashtag.id)
 
             val newHashtags = currentHashtags.toMutableList()
                     .mapIndexed { index, hashtag ->
@@ -139,7 +147,7 @@ class ViewModelImpl(
                 }
 
         val newHashtag = newHashtags[currentHashtagPosition]
-        suggestionInteractor.getSuggestions(getHashtagStringList(), newHashtag.text, newHashtag.id)
+        suggestionInteractor.getSuggestions(newHashtag.text, newHashtag.id)
         hashtagsMutable.postValue(newHashtags)
     }
 
@@ -185,7 +193,7 @@ class ViewModelImpl(
                             .apply {
                                 removeAt(hashtagPosition)
                             }
-                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtags.last().text, newHashtags.last().id)
+                    suggestionInteractor.getSuggestions(newHashtags.last().text, newHashtags.last().id)
                 } else {
                     val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
                     val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
@@ -194,7 +202,7 @@ class ViewModelImpl(
                             .apply {
                                 set(hashtagPosition, newHashtag)
                             }
-                    suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), newHashtag.text, newHashtag.id)
+                    suggestionInteractor.getSuggestions(newHashtag.text, newHashtag.id)
                 }
             }
             is HashtagInputValidation.HashtagFinished -> {
@@ -227,7 +235,7 @@ class ViewModelImpl(
                             }
                 }
                 currentHashtagPosition = newHashtags.lastIndex
-                suggestionInteractor.getSuggestions(getHashtagStringList(newHashtags), null, null)
+                suggestionInteractor.getSuggestions(null, null)
             }
             is HashtagInputValidation.Failure -> {
                 val correctedHashtag = validationResult.correctedHashtag
@@ -274,7 +282,7 @@ class ViewModelImpl(
                 if (isCharValid(index, char))
                     fixedStringBuilder.append(char)
             }
-            if (fixedStringBuilder.length > MIN_HASHTAG_LENGTH) {
+            if (fixedStringBuilder.removePrefix("#").length >= MIN_HASHTAG_LENGTH) {
                 if (!fixedStringBuilder.startsWith("#")) {
                     fixedStringBuilder.insert(0, "#")
                 }
@@ -327,13 +335,13 @@ class ViewModelImpl(
         private const val MIN_HASHTAG_LENGTH = 1
         private const val CARRIAGE_RETURN = 13
         private const val LINE_FEED = 10
-        private const val MAX_HASHTAG_COUNT = 7
         private val hashtagEndChars: List<Char> = listOf(
                 CARRIAGE_RETURN.toChar(),
                 LINE_FEED.toChar(),
                 ' ',
                 '#'
         )
+        private const val SUGGESTION_LIST_SIZE = 10
     }
 }
 
