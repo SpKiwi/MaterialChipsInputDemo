@@ -10,11 +10,12 @@
         android:id="@+id/hashtag_text_edit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:hint="#Add hashtag"
         android:background="@drawable/bg_hashtag"
-        app:layout_constraintStart_toStartOf="parent"
+        android:hint="#Add hashtag"
+        android:inputType="textNoSuggestions|textVisiblePassword"
         android:longClickable="false"
         android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="#music" />
 

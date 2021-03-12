@@ -47,7 +47,7 @@ class ViewModelImpl(
     private val isSuggestionsLoadingMutable: MutableLiveData<Boolean> = MutableLiveData<Boolean>().startWith(true)
 
     private var currentHashtagPosition: Int = 0
-    private val maxHashtagCount = 5
+    private val maxHashtagCount = 3
 
     private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
@@ -97,7 +97,7 @@ class ViewModelImpl(
                             if (containsInappropriateWords) {
                                 add(HashtagFailureReason.INAPPROPRIATE_LANGUAGE)
                             }
-                            if (hashtagsSize >= maxHashtagCount) {
+                            if (hashtagsSize > maxHashtagCount) {
                                 add(HashtagFailureReason.MAX_HASHTAGS_EXCEEDED)
                             }
                         }
@@ -207,7 +207,7 @@ class ViewModelImpl(
             }
             is HashtagInputValidation.HashtagFinished -> {
                 val correctedHashtag = validationResult.correctedHashtag
-                if (currentHashtags.size >= maxHashtagCount) {
+                if (currentHashtags.size > maxHashtagCount) {
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
                             shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
