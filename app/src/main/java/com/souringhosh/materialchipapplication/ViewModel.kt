@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.souringhosh.materialchipapplication.repository.Suggestion
 import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
+import com.souringhosh.materialchipapplication.repository.HashtagSuggestionRepository
 import com.souringhosh.materialchipapplication.utils.events.SingleEventFlag
 import com.souringhosh.materialchipapplication.utils.extensions.asFlow
 import com.souringhosh.materialchipapplication.utils.extensions.exhaustive
@@ -13,7 +14,6 @@ import com.souringhosh.materialchipapplication.utils.ui.adapter.ListItem
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.onEach
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
@@ -21,6 +21,7 @@ import kotlin.coroutines.CoroutineContext
 @ExperimentalCoroutinesApi
 @FlowPreview
 class ViewModelImpl(
+        private val hashtagSuggestionRepository: HashtagSuggestionRepository,
         private val suggestionInteractor: HashtagSuggestionInteractor
 ) : CoroutineScope {
 
@@ -59,7 +60,7 @@ class ViewModelImpl(
     private val currentHashtags: List<Hashtag> get() = hashtagsMutable.value ?: emptyList()
     private val currentSuggestions: List<Suggestion> get() = suggestionsMutable.value ?: emptyList()
 
-    private fun getHashtagStringList(): List<String> = currentHashtags.map { it.text }
+    private lateinit var getPreviousHashtagsJob: Job
 
     fun start() {
         launch {
@@ -111,10 +112,30 @@ class ViewModelImpl(
                         errorMutable.postValue(errors)
                     }
         }
+        getPreviousHashtagsJob = launch {
+            val result = hashtagSuggestionRepository.getHashtagSuggestions()
+            val newHashtags = currentHashtags
+                    .toMutableList()
+                    .apply {
+                        addAll(
+                                0,
+                                result.map {
+                                    Hashtag(
+                                            id = generateId(),
+                                            text = it,
+                                            state = Hashtag.State.READY,
+                                            inputType = HashtagInputType.DEFAULT
+                                    )
+                                }
+                        )
+                    }
+            hashtagsMutable.postValue(newHashtags)
+        }
         suggestionInteractor.getSuggestions(null, null)
     }
 
     fun selectActiveHashtag(position: Int) {
+        getPreviousHashtagsJob.cancel()
         val previousHashtagPosition = currentHashtagPosition
         if (previousHashtagPosition != position) {
             currentHashtagPosition = position
@@ -135,6 +156,7 @@ class ViewModelImpl(
     }
 
     fun selectSuggestion(position: Int) {
+        getPreviousHashtagsJob.cancel()
         val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
         val newHashtags: MutableList<Hashtag> = currentHashtags
                 .mapIndexed { index, hashtag ->
@@ -203,8 +225,8 @@ class ViewModelImpl(
     }
 
     fun editHashtag(hashtagPosition: Int, before: String, after: String) {
+        getPreviousHashtagsJob.cancel()
         currentHashtagPosition = hashtagPosition
-
         val newHashtags: List<Hashtag>
         val input = Input(before = before, after = after)
 

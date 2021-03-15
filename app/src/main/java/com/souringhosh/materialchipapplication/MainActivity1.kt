@@ -2,7 +2,6 @@ package com.souringhosh.materialchipapplication
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
@@ -14,6 +13,7 @@ import com.souringhosh.materialchipapplication.recycler.HashtagAdapter
 import com.souringhosh.materialchipapplication.recycler.SuggestionAdapter
 import com.souringhosh.materialchipapplication.repository.MockSuggestionRepository
 import com.souringhosh.materialchipapplication.repository.HashtagSuggestionInteractor
+import com.souringhosh.materialchipapplication.repository.MockHashtagSuggestionRepositoryImpl
 import kotlinx.android.synthetic.main.activity_main1.*
 
 class MainActivity1 : AppCompatActivity() {
@@ -38,6 +38,7 @@ class MainActivity1 : AppCompatActivity() {
     )
     private val suggestionAdapter: SuggestionAdapter = SuggestionAdapter { viewModel.selectSuggestion(it) }
     private val viewModel: ViewModelImpl = ViewModelImpl(
+            MockHashtagSuggestionRepositoryImpl(),
             HashtagSuggestionInteractor(
                     MockSuggestionRepository()
             )
