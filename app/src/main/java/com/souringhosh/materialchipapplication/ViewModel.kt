@@ -1,5 +1,6 @@
 package com.souringhosh.materialchipapplication
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.souringhosh.materialchipapplication.repository.Suggestion
@@ -13,6 +14,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onEach
+import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.CoroutineContext
 
@@ -33,7 +35,12 @@ class ViewModelImpl(
     }
 
     private val hashtagsMutable: MutableLiveData<List<Hashtag>> = MutableLiveData<List<Hashtag>>().startWith(
-            listOf(Hashtag(generateId(), "", Hashtag.State.LAST))
+            listOf(Hashtag(
+                    id = generateId(),
+                    text = "",
+                    state = Hashtag.State.LAST,
+                    inputType = HashtagInputType.CUSTOM
+            ))
     )
     val hashtags: LiveData<List<Hashtag>> get() = hashtagsMutable
 
@@ -131,14 +138,32 @@ class ViewModelImpl(
         val selectedSuggestionText = currentSuggestions.getOrNull(position)?.value ?: return
         val newHashtags: MutableList<Hashtag> = currentHashtags
                 .mapIndexed { index, hashtag ->
-                    val newText = if (index == currentHashtagPosition) selectedSuggestionText else hashtag.text
-                    hashtag.copy(text = newText, state = Hashtag.State.READY)
+                    val newText: String
+                    val newInputType: HashtagInputType
+                    if (index == currentHashtagPosition) {
+                        newText = selectedSuggestionText
+                        newInputType = HashtagInputType.SUGGESTED
+                    } else {
+                        newText = hashtag.text
+                        newInputType = hashtag.inputType
+                    }
+                    hashtag.copy(
+                            text = newText,
+                            state = Hashtag.State.READY,
+                            inputType = newInputType
+                    )
                 }
                 .toMutableList()
                 .apply {
                     val lastIndex = currentHashtags.lastIndex
                     if (currentHashtagPosition == lastIndex) {
-                        add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                        add(Hashtag(
+                                id = generateId(),
+                                text = "#",
+                                state = Hashtag.State.LAST,
+                                inputType = HashtagInputType.CUSTOM,
+                                shouldGainFocus = SingleEventFlag(true)
+                        ))
                         currentHashtagPosition++
                     } else {
                         currentHashtagPosition = lastIndex
@@ -196,7 +221,11 @@ class ViewModelImpl(
                     suggestionInteractor.getSuggestions(newHashtags.last().text, newHashtags.last().id)
                 } else {
                     val newHashtagState = if (hashtagPosition == currentHashtags.lastIndex) Hashtag.State.LAST else Hashtag.State.EDIT
-                    val newHashtag = currentHashtags[hashtagPosition].copy(text = after, state = newHashtagState)
+                    val newHashtag = currentHashtags[hashtagPosition].copy(
+                            text = after,
+                            state = newHashtagState,
+                            inputType = HashtagInputType.CUSTOM
+                    )
                     newHashtags = currentHashtags
                             .toMutableList()
                             .apply {
@@ -210,6 +239,7 @@ class ViewModelImpl(
                 if (currentHashtags.size > maxHashtagCount) {
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
+                            inputType = HashtagInputType.CUSTOM,
                             shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
                     )
                     newHashtags = currentHashtags
@@ -221,6 +251,7 @@ class ViewModelImpl(
                     val newHashtag = currentHashtags[hashtagPosition].copy(
                             text = validationResult.correctedHashtag,
                             state = Hashtag.State.READY,
+                            inputType = HashtagInputType.CUSTOM,
                             shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
                     )
                     newHashtags = currentHashtags
@@ -230,7 +261,13 @@ class ViewModelImpl(
                                 if (last().text.removePrefix("#").isBlank()) {
                                     set(lastIndex, last().copy(shouldGainFocus = SingleEventFlag(true)))
                                 } else {
-                                    add(Hashtag(generateId(), "#", Hashtag.State.LAST, shouldGainFocus = SingleEventFlag(true)))
+                                    add(Hashtag(
+                                            id = generateId(),
+                                            text = "#",
+                                            state = Hashtag.State.LAST,
+                                            inputType = HashtagInputType.CUSTOM,
+                                            shouldGainFocus = SingleEventFlag(true)
+                                    ))
                                 }
                             }
                 }
@@ -243,6 +280,7 @@ class ViewModelImpl(
                 val newHashtag = currentHashtags[hashtagPosition].copy(
                         text = validationResult.correctedHashtag,
                         state = newHashtagState,
+                        inputType = HashtagInputType.CUSTOM,
                         shouldCorrectSpelling = SingleEventFlag(correctedHashtag != after)
                 )
                 newHashtags = currentHashtags
@@ -256,7 +294,16 @@ class ViewModelImpl(
         hashtagsMutable.postValue(newHashtags)
     }
 
-    fun getTitleInfo(): List<String> = getHashtagStringList().map { it.removePrefix("#") }
+    fun getTitleInfo(): List<Hashtag> = currentHashtags.map { hashtag ->
+        val formattedText = hashtag.text
+                .removePrefix("#")
+                .trim()
+                .toLowerCase(Locale.US)
+
+        hashtag.copy(text = formattedText)
+    }
+            .filter { it.text.isNotEmpty() }
+            .take(maxHashtagCount)
 
     private data class Input(
             val before: String,
@@ -356,6 +403,7 @@ data class Hashtag(
         override val id: Long,
         val text: String,
         val state: State,
+        val inputType: HashtagInputType,
         val shouldCorrectSpelling: SingleEventFlag = SingleEventFlag(),
         val shouldGainFocus: SingleEventFlag = SingleEventFlag()
 ) : ListItem {

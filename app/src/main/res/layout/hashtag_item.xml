@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:background="@drawable/bg_hashtag"
         android:hint="#Add hashtag"
-        android:inputType="textNoSuggestions|textVisiblePassword"
+        android:inputType="textNoSuggestions|textVisiblePassword|textMultiLine"
         android:longClickable="false"
         android:textSize="16sp"
         app:layout_constraintStart_toStartOf="parent"
